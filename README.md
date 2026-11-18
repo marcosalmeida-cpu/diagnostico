@@ -112,3 +112,10 @@ Não configurar credenciais nem dados pessoais no repositório. O PDF e a IA só
 - Os próximos recortes a validar são população 60+, população por sexo, CadÚnico/IVCAD, RAIS/Novo Caged, justiça climática e dados municipais dos públicos específicos.
 - O PDF continua abrangente e reconsulta as fontes no servidor. Uma versão por filtro com capítulos por público está especificada, ainda não implementada.
 - Testes automatizados de taxonomia, cobertura de IDs e acessibilidade estrutural em tests/taxonomy.test.js.
+
+## V3.1 Premium — painel compacto e IBGE sexo/60+
+- [Especificação e verificações V3.1](docs/EVOLUCAO-V3-1-PREMIUM.md).
+- Navegação com apenas **uma barra**; alternador **Temas/Públicos**. MSE no painel, com denominação completa acessível.
+- **39 indicadores demonstrativos**, sendo dez novos do IBGE/SIDRA 9514, Censo 2022, validados por sexo/idade, com recortes de Mulheres, Pessoas Idosas e Juventude.
+- Auditoria de fontes em painel recolhível, sem supressão de dados, notas, competência ou PDF.
+- População por sexo no Censo não corresponde a identidade de gênero; nenhuma vulnerabilidade é inferida do total populacional.
