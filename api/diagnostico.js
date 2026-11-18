@@ -2,6 +2,7 @@
 
 const IBGE = 'https://servicodados.ibge.gov.br';
 const SICONFI = 'https://apidatalake.tesouro.gov.br';
+const {getCras}=require('./suas');
 function readPotential2026(code){
   try{return require('../data/mte2026').getByMunicipio(code);}
   catch(_){return null;}
@@ -86,13 +87,16 @@ async function getDiagnosis(code) {
     fetchBudget(codigo),
     json(IBGE + '/api/v3/agregados/9514/periodos/2022/variaveis/93?localidades=N6[' + codigo + ']&classificacao=2[6794]|287[93086,93087,93088]|286[113635]'),
     json(IBGE + '/api/v3/agregados/9543/periodos/2022/variaveis/2513?localidades=N6[' + codigo + ']&classificacao=2[6794]|86[95251]|287[100362]'),
-    json(IBGE + '/api/v3/agregados/10061/periodos/2022/variaveis/2667?localidades=N6[' + codigo + ']&classificacao=1568[9493,9494,9495,99713]|58[95253]|2[6794]|86[95251]')
+    json(IBGE + '/api/v3/agregados/10061/periodos/2022/variaveis/2667?localidades=N6[' + codigo + ']&classificacao=1568[9493,9494,9495,99713]|58[95253]|2[6794]|86[95251]'),
+    getCras(municipio.nome,municipio.uf)
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
   const estimateYears = Object.keys(estimated).filter(k => k.startsWith('9324:')).map(k => Number(k.split(':')[1])).sort((a,b) => b-a);
   const latestYear = estimateYears[0] || null;
   const budget = results[2].status === 'fulfilled' ? results[2].value : null;
+  const suasReport = results[6].status === 'fulfilled' ? results[6].value : {data:null,url:null};
+  const cras=suasReport?.data || null;
   const age = classifiedValues(results[3].status === 'fulfilled' ? results[3].value : null, codigo, 287, ['93086','93087','93088']);
   const young = age.size === 3 ? [...age.values()].reduce((a,b)=>a+b,0) : null;
   const population = asFinite(census['93:2022']);
@@ -129,6 +133,10 @@ async function getDiagnosis(code) {
     indicator('mte_cota_agricultura','Potencial da cota · agricultura',learning?.setores?.['Agricultura']??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
     indicator('mte_cota_transportes','Potencial da cota · transportes',learning?.setores?.['Transportes']??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
     indicator('mte_cota_outros','Potencial da cota · outros setores',learning?.setores?.['Outros']??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
+    indicator('suas_cras_total_2024','CRAS identificados · Censo SUAS',cras?.total??null,'unidades','2024','suas_municipal','Contagem dos CRAS por capacidade de referenciamento no Censo SUAS 2024; não é quantidade de famílias atendidas.'),
+    indicator('suas_cras_2500_2024','CRAS com capacidade de até 2.500 famílias',cras?.ate2500??null,'unidades','2024','suas_municipal'),
+    indicator('suas_cras_3500_2024','CRAS com capacidade de até 3.500 famílias',cras?.ate3500??null,'unidades','2024','suas_municipal'),
+    indicator('suas_cras_5000_2024','CRAS com capacidade de até 5.000 famílias',cras?.ate5000??null,'unidades','2024','suas_municipal'),
     indicator('orcamento_assistencia', 'Despesas liquidadas · Assistência Social', budget?.assist ?? null, 'R$', budget?.period ?? '—', 'tesouro', 'Despesa por função. Não representa orçamento disponível para novos projetos.'),
     indicator('orcamento_educacao', 'Despesas liquidadas · Educação', budget?.education ?? null, 'R$', budget?.period ?? '—', 'tesouro'),
     indicator('orcamento_saude', 'Despesas liquidadas · Saúde', budget?.health ?? null, 'R$', budget?.period ?? '—', 'tesouro')
@@ -142,13 +150,13 @@ async function getDiagnosis(code) {
     {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
     {id:'cadunico',name:'Cadastro Único e IVCAD',status:'nao_integrado',source:'mds',reason:'Sem extração agregada municipal validada nesta versão.'},
     {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
-    {id:'suas',name:'Proteção social e Censo SUAS',status:'nao_integrado',source:'suas',reason:'Importação de equipamentos e serviços municipais pendente.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
     {id:'trabalho',name:'Trabalho e renda',status:'nao_integrado',source:'mte',reason:'RAIS/Novo Caged ainda não validados.'},
     {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
   ];
   const valid = data.filter(d => d.status === 'verificado').length;
   return { version: '2.0-homologacao', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
-    sources: SOURCES, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
       disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
     notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
       'Comparações e recomendações dependem de indicadores equivalentes e validados.'] };
