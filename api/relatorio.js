@@ -106,7 +106,7 @@ function cover(pdf,fonts,d,analysis){
  brandStripe(p,h-14,14);
  // Símbolo original do guia da marca em suporte claro, preservado sem distorções.
  p.drawCircle({x:490,y:h-102,size:51,color:COLORS.white});
- drawBrandFace(p,459,h-131,62);
+ drawBrandFace(p,459,h-71,62);
  p.drawText('REDE CIDADÃ',{x:46,y:h-86,font:fonts.bold,size:19,color:COLORS.white});
  p.drawText('OBSERVATÓRIO DE REALIDADE SOCIAL',{x:46,y:h-112,font:fonts.reg,size:9,color:COLORS.green});
  p.drawText('DIAGNÓSTICO',{x:46,y:635,font:fonts.bold,size:38,color:COLORS.white});
