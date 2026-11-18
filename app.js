@@ -1,14 +1,128 @@
 'use strict';
 const qs = s=>document.querySelector(s);
-const state={selected:null,data:null,analysis:null,searchController:null};
+const state={selected:null,data:null,analysis:null,searchController:null,activeKind:'themes',activeId:'demografia',expanded:false};
+const TAXONOMY=window.DIAGNOSTICO_TAXONOMY;
 const nf=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
 const curr=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
 const idToLabel={'verificado':'Verificado','nao_integrado':'Não integrado','indisponivel':'Indisponível','parcial':'Parcial'};
+
+const SVGNS='http://www.w3.org/2000/svg';
+function createText(tag,text,cls){
+ const node=document.createElement(tag);node.textContent=String(text);if(cls)node.className=cls;return node;
+}
+function createTab(item,kind){
+ const button=document.createElement('button');
+ button.type='button';button.className='dashboard-tab';
+ button.dataset.group=item.id;button.dataset.kind=kind;
+ button.setAttribute('aria-label',(kind==='themes'?'Eixo temático: ':'Público: ')+item.name);
+ button.setAttribute('aria-controls','activePanel');
+ const svg=document.createElementNS(SVGNS,'svg');
+ svg.setAttribute('class','tab-icon');svg.setAttribute('aria-hidden','true');svg.setAttribute('viewBox','0 0 24 24');
+ const use=document.createElementNS(SVGNS,'use');use.setAttribute('href','#'+item.icon);svg.append(use);
+ const name=createText('span',item.name,'tab-name');const pill=createText('small','—','tab-count');
+ button.append(svg,name,pill);
+ button.addEventListener('click',()=>{
+  state.activeKind=kind;state.activeId=item.id;state.expanded=false;
+  drawPanel(state.data);
+  const panel=qs('#activePanel');
+  if(panel && panel.getBoundingClientRect().top<0)panel.scrollIntoView({behavior:'smooth',block:'start'});
+ });
+ return button;
+}
+function initTabs(){
+ for(const [kind,selector] of [['themes','#themeTabs'],['audiences','#audienceTabs']]){
+  const parent=qs(selector);if(!parent)return;
+  parent.replaceChildren(...TAXONOMY[kind].map(item=>createTab(item,kind)));
+ }
+ updateTabStates();
+}
+function updateTabStates(){
+ for(const kind of ['themes','audiences']){
+  const ids=TAXONOMY[kind];
+  const container=qs(kind==='themes'?'#themeTabs':'#audienceTabs');if(!container)return;
+  for(const [i,button] of [...container.children].entries()){
+   const active=kind===state.activeKind&&ids[i].id===state.activeId;
+   button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));
+   const vals=state.data?ids[i].ids.map(id=>state.data.indicators.find(v=>v.id===id)).filter(Boolean):[];
+   const ok=vals.filter(v=>v.status==='verificado'&&v.value!==null).length;
+   button.querySelector('.tab-count').textContent=!state.data?'—':ids[i].ids.length===0?'Em integração':ok+'/'+ids[i].ids.length;
+  }
+ }
+}
+function appendIndicatorLine(container,item,context=false){
+ const line=document.createElement('div');
+ line.className='indicator-line '+(item?.status==='verificado'&&!context?'':'unavailable');
+ const left=document.createElement('div');
+ left.append(createText('b',item.label));
+ const source=state.data?.sources?.[item.source]?.name||'Fonte não cadastrada';
+ left.append(createText('small',source+' · '+(item.period||'Sem competência publicada')));
+ const value=createText('strong',item.status==='verificado'?fmt(item):'Indisponível');
+ if(context){line.classList.add('context-line');value.title='Contexto territorial — não representa contagem desse público';}
+ line.append(left,value);container.append(line);
+}
+function drawPanel(d){
+ const group=(TAXONOMY[state.activeKind]||[]).find(g=>g.id===state.activeId)||TAXONOMY.themes[0];
+ if(!group)return;
+ updateTabStates();
+ qs('#groupKind').textContent=state.activeKind==='themes'?'EIXO TEMÁTICO':'PÚBLICO PRIORITÁRIO';
+ qs('#groupTitle').textContent=group.name;
+ qs('#groupDescription').textContent=group.description;
+ const all=group.ids.map(id=>d?.indicators?.find(v=>v.id===id)).filter(Boolean);
+ const verified=all.filter(ind=>ind.status==='verificado'&&ind.value!==null);
+ const total=group.ids.length;
+ const label=!d?'Aguardando consulta':total===0?'Em implantação':verified.length===total?'Validado neste recorte':verified.length?'Parcial':'Indisponível';
+ qs('#groupStatus').textContent=label;
+ qs('#indicatorCount').textContent=(d?verified.length:0)+' verificados';
+ qs('#groupDataCaption').textContent=d?verified.length+' de '+total+' indicadores deste recorte com valor verificado':'Consulta municipal ainda não realizada';
+ const featured=qs('#featuredMetrics');featured.replaceChildren();
+ if(verified.length){
+  for(const item of verified.slice(0,4)){
+   const card=document.createElement('article');card.className='metric-card';
+   card.append(createText('span',item.label,'metric-label'));
+   card.append(createText('strong',fmt(item),'metric-value'));
+   card.append(createText('small',(d.sources[item.source]?.name||'Fonte oficial')+' · '+item.period,'metric-source'));
+   featured.append(card);
+  }
+ }else{
+  const placeholder=document.createElement('div');placeholder.className='metrics-placeholder';
+  placeholder.append(createText('strong',!d?'Escolha um município':'Aguardando dados validados para este recorte'));
+  placeholder.append(createText('p',!d?'Faça a consulta na capa para carregar os indicadores oficiais.':'A ausência de dados neste painel não significa ausência de demandas sociais ou valor zero.'));
+  featured.append(placeholder);
+ }
+ const list=qs('#indicatorList');list.replaceChildren();
+ const view=state.expanded?all:all.slice(0,6);
+ for(const item of view)appendIndicatorLine(list,item);
+ if(!all.length)list.append(createText('div','Não há indicadores diretos integrados neste recorte. Consulte as bases em validação ao lado.','empty'));
+ const context=(group.contextIds||[]).map(id=>d?.indicators.find(x=>x.id===id)).filter(x=>x&&x.status==='verificado');
+ if(context.length){
+  list.append(createText('p','Contexto geral do município — não mede diretamente este público','context-heading'));
+  for(const item of context)appendIndicatorLine(list,item,true);
+ }
+ const show=qs('#showAllBtn');show.hidden=all.length<=6;
+ show.textContent=state.expanded?'Recolher indicadores':'Ver todos ('+all.length+')';
+ const gaps=qs('#groupGaps');gaps.replaceChildren();
+ gaps.append(createText('h4','Fontes em validação'));
+ for(const entry of group.pending||[]){
+  const link=document.createElement('a');link.href=entry.url;link.target='_blank';link.rel='noopener noreferrer';
+  link.append(createText('strong',entry.label));link.append(createText('small',entry.source));
+  gaps.append(link);
+ }
+ if(!group.pending?.length)gaps.append(createText('p','Nenhuma fonte adicional listada para este recorte.','panel-help'));
+ if(d){
+  qs('#qualityTag').textContent=d.quality.verified+' / '+d.quality.total+' demonstrativos';
+  qs('#coverage').textContent=d.quality.coveragePercent+'%';
+  qs('#coverageBar').style.width=d.quality.coveragePercent+'%';
+ }else{
+  qs('#qualityTag').textContent='Aguardando';qs('#coverage').textContent='—';qs('#coverageBar').style.width='0';
+ }
+}
+
 function status(text,problem=false){const e=qs('#globalNotice');e.querySelector('span:last-child').textContent=text;e.style.background=problem?'#fff4e6':'#e9f2ff';}
 function fmt(ind){if(!ind||ind.value===null)return '—';if(ind.unit==='R$')return curr.format(ind.value);return nf.format(ind.value)+(ind.unit==='pessoas'?'':ind.unit==='km²'?' km²':ind.unit==='hab./km²'?' hab./km²':ind.unit==='%'?'%':ind.unit==='postos potenciais'?' postos potenciais':'');}
 function enableReady(on){qs('#analysisBtn').disabled=!on;qs('#pdfTop').disabled=!on;qs('#pdfBottom').disabled=!on;}
 function select(m){
   state.selected=m;state.data=null;state.analysis=null;
+  drawPanel(null);
   qs('#citySearch').value=m.nome+' / '+m.uf;
   qs('#suggestions').hidden=true;
   qs('#loadBtn').disabled=false;
@@ -17,7 +131,7 @@ function select(m){
 }
 let searchTimer;
 qs('#citySearch').addEventListener('input',e=>{
-  state.selected=null;qs('#loadBtn').disabled=true;enableReady(false);
+  state.selected=null;state.data=null;qs('#loadBtn').disabled=true;enableReady(false);drawPanel(null);
   const q=e.target.value.trim();clearTimeout(searchTimer);
   if(q.length<2){qs('#suggestions').hidden=true;return;}
   searchTimer=setTimeout(async()=>{
@@ -51,57 +165,36 @@ qs('#loadBtn').onclick=async()=>{
   if(d.municipio.codigoIBGE!==state.selected.codigoIBGE)throw new Error('O município retornado não corresponde à seleção.');
   state.data=d;state.analysis=null;render(d);enableReady(true);
   status('Consulta concluída. '+d.quality.verified+' de '+d.quality.total+' indicadores demonstrativos verificados. Consulte as lacunas antes de decidir.');
-  document.getElementById('indicadores').scrollIntoView({behavior:'smooth'});
+  document.getElementById('indicadores').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
  }catch(err){status(err.message,true)}
- finally{button.disabled=false;button.textContent='Gerar diagnóstico ↗';}
+ finally{button.disabled=false;button.textContent='Consultar território ↗';}
 };
 function set(id,value){qs(id).textContent=value;}
 function render(d){
- const get=id=>d.indicators.find(x=>x.id===id);
- set('#kpiCensus',fmt(get('populacao_censo')));
- set('#kpiEstimate',fmt(get('populacao_estimativa')));
- set('#kpiYouth',fmt(get('jovens_15_29')));
- set('#kpiLiteracy',fmt(get('alfabetizacao_15mais')));
- set('#kpiCras',fmt(get('suas_cras_total_2024')));
- set('#kpiPotential',fmt(get('mte_potencial_cota')));
- set('#kpiIdebInitial',fmt(get('ideb_iniciais_publica_2025')));
- set('#kpiIdebFinal',fmt(get('ideb_finais_publica_2025')));
- set('#kpiArea',fmt(get('area')));
- set('#kpiAssist',fmt(get('orcamento_assistencia')));
- set('#metaEstimate','IBGE · '+(get('populacao_estimativa')?.period||'Competência indisponível'));
- set('#metaAssist','SICONFI · '+(get('orcamento_assistencia')?.period||'Sem competência válida'));
- set('#territoryCaption',d.municipio.nome+' / '+d.municipio.uf+' · Código IBGE '+d.municipio.codigoIBGE+' · fontes oficiais e transparência metodológica.');
- set('#lastUpdated','CONSULTADO EM '+new Date(d.generatedAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));
- const list=qs('#indicatorList');list.replaceChildren();
- let currentGroup='';
- for(const ind of d.indicators){
-  const group=ind.id.startsWith('suas_')?'PROTEÇÃO SOCIAL · CENSO SUAS 2024':ind.id.startsWith('mte_')?'APRENDIZAGEM PROFISSIONAL · POTENCIAL DE COTA':ind.id.startsWith('orcamento_')?'EXECUÇÃO ORÇAMENTÁRIA':(ind.id.startsWith('jovens_')?'JUVENTUDE':(ind.id.includes('alfabetizacao')||ind.id.includes('medio')||ind.id.includes('superior')||ind.id.startsWith('ideb_'))?'EDUCAÇÃO E ESCOLARIDADE':'PERFIL DEMOGRÁFICO');
-  if(group!==currentGroup){const heading=document.createElement('div');heading.className='indicator-group';heading.textContent=group;list.append(heading);currentGroup=group;}
-  const line=document.createElement('div');line.className='indicator-line '+(ind.status==='verificado'?'':'unavailable');
-  const left=document.createElement('div');const b=document.createElement('b');b.textContent=ind.label;
-  const sm=document.createElement('small');sm.textContent=(d.sources[ind.source]?.name||'Fonte não cadastrada')+' · '+ind.period;
-  left.append(b,sm);const val=document.createElement('strong');val.textContent=ind.status==='verificado'?fmt(ind):'Indisponível';line.append(left,val);list.append(line);
- }
- set('#indicatorCount',d.quality.verified+' verificados');
- set('#qualityTag',d.quality.verified+' / '+d.quality.total+' indicadores');
- set('#coverage',d.quality.coveragePercent+'%');
- qs('#coverageBar').style.width=d.quality.coveragePercent+'%';
+ set('#territoryCaption',d.municipio.nome+' / '+d.municipio.uf+' · Código IBGE '+d.municipio.codigoIBGE+' · fontes e competências oficiais.');
+ set('#lastUpdated','CONSULTA: '+new Date(d.generatedAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));
+ drawPanel(d);
  const modules=qs('#moduleList');modules.replaceChildren();
  for(const mod of d.modules){
   const card=document.createElement('article');card.className='module';
   const header=document.createElement('div');header.className='module-top';
-  const title=document.createElement('b');title.textContent=mod.name;
-  const tag=document.createElement('span');tag.className='pill '+(mod.status==='verificado'?'ok':(mod.status==='nao_integrado'||mod.status==='parcial')?'pending':'bad');
-  tag.textContent=idToLabel[mod.status]||mod.status;header.append(title,tag);
-  const desc=document.createElement('small');desc.textContent=mod.reason||(mod.status==='verificado'?'Consulta estruturada com valores rastreáveis.':'Sem dados validados.');
-  const anchor=document.createElement('a');anchor.href=d.sources[mod.source]?.url||'#';anchor.target='_blank';anchor.rel='noopener noreferrer';anchor.textContent='Consultar fonte oficial ↗';
-  card.append(header,desc,anchor);modules.append(card);
+  const title=createText('b',mod.name);
+  const tag=createText('span',idToLabel[mod.status]||mod.status,'pill '+(mod.status==='verificado'?'ok':(mod.status==='nao_integrado'||mod.status==='parcial')?'pending':'bad'));
+  header.append(title,tag);
+  const desc=createText('small',mod.reason||(mod.status==='verificado'?'Consulta estruturada com valores rastreáveis.':'Sem dados validados.'));
+  card.append(header,desc);
+  const url=d.sources?.[mod.source]?.url;
+  if(url&&/^https:\/\//.test(url)){const anchor=document.createElement('a');anchor.href=url;anchor.target='_blank';anchor.rel='noopener noreferrer';anchor.textContent='Consultar fonte oficial ↗';card.append(anchor);}
+  modules.append(card);
  }
  qs('#analysisTitle').textContent='Leitura social fundamentada';
  qs('#analysisMode').textContent='Análise ainda não solicitada';
  const body=qs('#analysisBody');body.replaceChildren();
- const p=document.createElement('p');p.textContent='Clique em Gerar análise social para relacionar os indicadores verificados e identificar os próximos passos, sem preencher lacunas.';body.append(p);
+ body.append(createText('p','Clique em Gerar análise social para relacionar os indicadores verificados e identificar os próximos passos, sem preencher lacunas.'));
 }
+qs('#showAllBtn').onclick=()=>{state.expanded=!state.expanded;drawPanel(state.data);};
+initTabs();
+drawPanel(null);
 qs('#analysisBtn').onclick=async()=>{
  if(!state.data)return;
  const b=qs('#analysisBtn');b.disabled=true;b.textContent='Gerando análise...';
