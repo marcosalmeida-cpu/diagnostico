@@ -6,3 +6,92 @@
 @media(max-width:530px){.topbar{align-items:center}.topbar h1{font-size:17px}.eyebrow{font-size:7px}.top-actions .btn{font-size:0;height:38px;width:38px;padding:0}.top-actions .btn:after{content:"↓";font-size:19px}.hero h2{letter-spacing:-.04em}.search-row{flex-direction:column}.search-row .btn{width:100%}.search-box input{height:46px}.section-heading{align-items:flex-start;flex-direction:column}.section-heading .btn{align-self:flex-start}.kpi-grid,.modules-grid{grid-template-columns:1fr 1fr;gap:9px}.kpi strong{font-size:clamp(20px,6vw,27px)}.kpi-top{font-size:10px}.panel{padding:17px}.modules-grid .module{padding:13px;min-height:160px}.module-top{display:block}.module .pill{display:inline-block;margin-top:8px}.quality-number{font-size:43px}.indicator-line strong{font-size:12px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,.progress-track div{transition:none!important}}
 .indicator-group{padding:21px 0 9px;font-weight:900;font-size:9px;letter-spacing:.12em;color:#416dac;border-top:1px solid #e3eaf4;margin-top:6px}.indicator-group:first-child{padding-top:8px;border-top:0}
+
+
+/* Rede Cidadã - Guia da Marca SET/2025, pp. 2-9. Logo não alterado. */
+:root{
+  --navy:#0322D6;--deep:#021A9C;--blue:#0322D6;
+  --lime:#FFC000;--lime-strong:#FFCE42;--ink:#1E2B48;
+  --muted:#627189;--line:#E3EAF4;--bg:#F7F9FC;--white:#fff;
+  --rc-light:#65C8F3;--rc-red:#FF001F;--shadow:0 12px 35px rgba(3,34,214,.055);
+}
+body{color:var(--ink);background:var(--bg)}
+.icon-defs{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
+.rail-icon{width:23px;height:23px;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;fill:none;flex-shrink:0}
+.app-shell{grid-template-columns:80px minmax(0,1fr)}
+.sidebar{
+  background:#fff;color:var(--blue);padding:22px 12px;
+  border-right:1px solid #E5ECF7;box-shadow:5px 0 24px rgba(3,34,214,.025);
+  align-items:center;gap:0;
+}
+.rail-brand{display:flex;align-items:center;justify-content:center;width:56px;height:56px;flex:none;border-radius:50%;margin:0 0 22px}
+.rail-brand img{width:46px;height:46px;display:block;max-width:100%;object-fit:contain}
+.rail-brand:focus-visible{outline:3px solid var(--rc-light)}
+.rail-divider{height:1px;width:33px;background:#E1E8F6;margin:0 0 23px}
+.side-nav{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
+.side-nav a{
+ display:grid;place-items:center;width:52px;height:52px;padding:0;
+ border-radius:15px;background:transparent;color:#3C5C9F;position:relative;
+ transition:background .15s,color .15s,transform .15s;
+}
+.side-nav a:hover{background:#EAF4FE;color:var(--blue);transform:translateY(-1px)}
+.side-nav a.active{background:#E7EEFF;color:var(--blue)}
+.side-nav a.active:before{display:none}
+.side-nav a.active:after{content:"";position:absolute;left:-12px;top:14px;height:24px;width:3px;border-radius:0 3px 3px 0;background:var(--blue)}
+.side-nav a .rail-icon{color:inherit}
+.rail-bottom{margin-top:auto;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:#F3F7FF}
+.env-dot{width:8px;height:8px;background:var(--rc-light);box-shadow:0 0 0 5px #65C8F326}
+.topbar{border-bottom:1px solid #E7ECF8;position:relative}
+.topbar:after{position:absolute;bottom:0;left:0;right:0;height:3px;content:"";background:linear-gradient(90deg,#65C8F3 0%,#0322D6 45%,#FF001F 75%,#FFC000 100%)}
+.topbar h1{color:#112C5F}
+.topbar h1 span{color:#4B6CB4}
+.eyebrow{color:#3157B7}
+.chip-muted{background:#EAF0FF;color:#3152B9}
+.chip i{background:#FFC000}
+.btn-dark{background:#0322D6;color:white}
+.btn-dark:hover:not(:disabled){background:#001BAE}
+.btn-lime{background:#FFC000;color:#081E4E}
+.btn-lime:hover:not(:disabled){background:#FFD24F}
+.btn-outline{border-color:#BDCDFF;color:var(--blue)}
+.btn-outline:hover{background:#EDF4FF}
+.hero{background:#0322D6;box-shadow:0 23px 55px rgba(3,34,214,.14)}
+.hero-visual{background:radial-gradient(circle at 54% 50%,#2759FF 0%,#0D3CF0 29%,#0322D6 73%)}
+.orbit{border-color:#B7DBFF35}
+.pin{background:#FFC000;box-shadow:0 0 0 12px #FFC00027,0 0 0 35px #FFC00010}
+.visual-card{background:#1C42DADC;border-color:#ACCFFF44}
+.visual-card span{color:#FFC000}
+.visual-card small{color:#D5E7FF}
+.hero h2 em{color:#FFC000}
+.hero p{color:#DDE9FF}
+.overline{color:#FFC000}
+.overline.blue{color:#0322D6}
+.search-label{color:#E8F0FF}
+.sample-row span{color:#D1E2FF}
+.sample-row button{background:#2042E0;border-color:#7D9BFF;color:white}
+.sample-row button:hover{background:#3E60F2}
+.notice{background:#EDF4FF;border-color:#D5E4FF;color:#254AA6}
+.notice-icon{border-color:#6684D2}
+.kpi{border-color:#E7EDF8;box-shadow:0 8px 27px rgba(17,49,123,.045)}
+.kpi-navy{background:#0322D6;border-color:#0322D6}
+.kpi-navy .kpi-icon{color:#FFC000}
+.kpi-icon{color:#0322D6}
+.panel,.module,.recommend{border-color:#E7EDF8}
+.quality-number{color:#0322D6}
+.progress-track div{background:linear-gradient(90deg,#0322D6,#65C8F3)}
+.status-tag{color:#244EC5;background:#EAF1FF}
+.analysis-panel{background:linear-gradient(150deg,#EDF4FF,#FFFFFF 75%);border-color:#D9E5FF}
+.spark,.minor{color:#0322D6}
+.recommend .overline{color:#0322D6}
+.recommend-item b{color:#0322D6}
+.indicator-group{color:#0322D6;border-color:#E5EDFF}
+.module a{color:#0322D6}
+.pill.ok{color:#1B6E47;background:#E6F7EE}
+.footnote{border-color:#0322D6;background:#EFF4FF;color:#536682}
+.report-cta{background:#0322D6;position:relative;overflow:hidden}
+.report-cta:after{position:absolute;bottom:0;left:0;right:0;height:5px;content:"";background:linear-gradient(90deg,#65C8F3 0%,#0322D6 45%,#FF001F 75%,#FFC000 100%)}
+.mobile-tabs .rail-icon{width:22px;height:22px;stroke-width:1.65}
+.mobile-tabs a{font-size:14px;color:#3358A3}
+.mobile-tabs a:focus-visible,.mobile-tabs a:hover{color:#0322D6}
+@media (min-width:801px){.app-shell{grid-template-columns:80px minmax(0,1fr)}.sidebar{width:80px}.main{min-width:0}}
+@media (max-width:800px){.app-shell{display:block}.sidebar{display:none}.mobile-tabs{background:#fff;box-shadow:0 -6px 22px rgba(3,34,214,.07)}.mobile-tabs a{font-weight:600;gap:3px}.mobile-tabs small{font-size:9px}}
+@media (max-width:530px){.topbar h1{font-size:16px}.hero{border-radius:18px}.hero h2{font-size:32px}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi strong{font-size:23px}.report-cta{padding:24px 19px}.modules-grid{gap:10px}}
