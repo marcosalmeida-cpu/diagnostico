@@ -151,7 +151,7 @@ function select(m){
   qs('#citySearch').value=m.nome+' / '+m.uf;
   qs('#suggestions').hidden=true;
   qs('#loadBtn').disabled=false;
-  qs('#territoryCaption').textContent='Território selecionado: '+m.nome+' / '+m.uf+' · Código IBGE '+m.codigoIBGE+'. Clique em Gerar diagnóstico.';
+  qs('#territoryCaption').textContent='Território selecionado: '+m.nome+' / '+m.uf+' · Código IBGE '+m.codigoIBGE+'. Clique em Consultar território.';
   enableReady(false);
 }
 let searchTimer;
@@ -175,11 +175,10 @@ qs('#citySearch').addEventListener('input',e=>{
         const sub=document.createElement('small');sub.textContent='Código IBGE: '+m.codigoIBGE;
         button.append(label,sub);button.onclick=()=>select(m);host.append(button);
       }
-    }catch(err){if(err.name!=='AbortError'){host.replaceChildren();const p=document.createElement('div');p.className='empty';p.textContent='Consulta indisponível. Use uma das consultas rápidas ou tente novamente.';host.append(p);}}
+    }catch(err){if(err.name!=='AbortError'){host.replaceChildren();const p=document.createElement('div');p.className='empty';p.textContent='Consulta indisponível. Tente novamente informando nome ou código IBGE.';host.append(p);}}
   },350);
 });
 document.addEventListener('click',e=>{if(!e.target.closest('.search-box'))qs('#suggestions').hidden=true;});
-document.querySelectorAll('.sample-city').forEach(el=>el.addEventListener('click',()=>select({codigoIBGE:el.dataset.ibge,nome:el.dataset.city,uf:el.dataset.uf})));
 qs('#loadBtn').onclick=async()=>{
  if(!state.selected)return;
  const button=qs('#loadBtn');button.disabled=true;button.textContent='Consultando fontes...';
