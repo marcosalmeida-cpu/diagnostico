@@ -137,7 +137,13 @@ function drawPanel(d){
 }
 
 function status(text,problem=false){const e=qs('#globalNotice');e.querySelector('span:last-child').textContent=text;e.style.background=problem?'#fff4e6':'#e9f2ff';}
-function fmt(ind){if(!ind||ind.value===null)return '—';if(ind.unit==='R(ind.unit==='pessoas'?'':ind.unit==='km²'?' km²':ind.unit==='hab./km²'?' hab./km²':ind.unit==='%'?'%':ind.unit==='postos potenciais'?' postos potenciais':'');}
+function fmt(ind){
+ if(!ind||ind.value===null||ind.value===undefined)return '—';
+ if(ind.unit==='R$')return curr.format(ind.value);
+ if(ind.unit==='índice (0–1)')return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}).format(ind.value);
+ const suffix=ind.unit==='km²'?' km²':ind.unit==='hab./km²'?' hab./km²':ind.unit==='%'?'%':ind.unit==='postos potenciais'?' postos potenciais':'';
+ return nf.format(ind.value)+suffix;
+}
 function enableReady(on){qs('#analysisBtn').disabled=!on;qs('#pdfTop').disabled=!on;qs('#pdfBottom').disabled=!on;}
 function select(m){
   state.selected=m;state.data=null;state.analysis=null;
