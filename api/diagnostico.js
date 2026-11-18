@@ -40,6 +40,26 @@ function seriesValues(data, code) {
   }
   return selected;
 }
+
+function classifiedValues(data, code, classId, validIds) {
+  const out = new Map();
+  if (!Array.isArray(data)) return out;
+  for (const item of data) for (const group of item.resultados || []) {
+    const classification = (group.classificacoes || []).find(x => String(x.id) === String(classId));
+    if (!classification) continue;
+    const keys = Object.keys(classification.categoria || {});
+    if (keys.length !== 1 || !validIds.includes(String(keys[0]))) continue;
+    const key = String(keys[0]);
+    for (const serie of group.series || []) {
+      if (String(serie.localidade?.id || '') !== code) continue;
+      const v = numeric(serie.serie?.['2022']);
+      if (v === null || v < 0 || out.has(key)) continue;
+      out.set(key, v);
+    }
+  }
+  return out;
+}
+const within = (value, min, max) => Number.isFinite(value) && value >= min && value <= max ? value : null;
 function indicator(id, label, value, unit, period, source, note = '') {
   return { id, label, value: Number.isFinite(value) ? value : null, unit, period, source, note, status: Number.isFinite(value) ? 'verificado' : 'indisponivel' };
 }
@@ -54,31 +74,57 @@ async function getDiagnosis(code) {
   const results = await Promise.allSettled([
     json(IBGE + '/api/v3/agregados/4714/periodos/2022/variaveis/93|6318|614?localidades=N6[' + codigo + ']'),
     json(IBGE + '/api/v3/agregados/6579/periodos/-1/variaveis/9324?localidades=N6[' + codigo + ']'),
-    fetchBudget(codigo)
+    fetchBudget(codigo),
+    json(IBGE + '/api/v3/agregados/9514/periodos/2022/variaveis/93?localidades=N6[' + codigo + ']&classificacao=2[6794]|287[93086,93087,93088]|286[113635]'),
+    json(IBGE + '/api/v3/agregados/9543/periodos/2022/variaveis/2513?localidades=N6[' + codigo + ']&classificacao=2[6794]|86[95251]|287[100362]'),
+    json(IBGE + '/api/v3/agregados/10061/periodos/2022/variaveis/2667?localidades=N6[' + codigo + ']&classificacao=1568[9493,9494,9495,99713]|58[95253]|2[6794]|86[95251]')
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
   const estimateYears = Object.keys(estimated).filter(k => k.startsWith('9324:')).map(k => Number(k.split(':')[1])).sort((a,b) => b-a);
   const latestYear = estimateYears[0] || null;
   const budget = results[2].status === 'fulfilled' ? results[2].value : null;
+  const age = classifiedValues(results[3].status === 'fulfilled' ? results[3].value : null, codigo, 287, ['93086','93087','93088']);
+  const young = age.size === 3 ? [...age.values()].reduce((a,b)=>a+b,0) : null;
+  const population = asFinite(census['93:2022']);
+  const validYoung = Number.isFinite(young) && young >= 0 && Number.isFinite(population) && young <= population ? young : null;
+  const literacyRaw = results[4].status === 'fulfilled' ? seriesValues(results[4].value, codigo)['2513:2022'] : null;
+  const literacy = within(literacyRaw, 0, 100);
+  const education = classifiedValues(results[5].status === 'fulfilled' ? results[5].value : null, codigo, 1568, ['9493','9494','9495','99713']);
+  const total18 = education.size === 4 ? [...education.values()].reduce((a,b)=>a+b,0) : null;
+  const lowCount = Number.isFinite(total18) && total18 > 0 ? education.get('9493') + education.get('9494') : null;
+  const lowPct = Number.isFinite(lowCount) && Number.isFinite(total18) && total18 > 0 ? within(100*lowCount/total18,0,100) : null;
+  const higherPct = Number.isFinite(total18) && total18 > 0 ? within(100*education.get('99713')/total18,0,100) : null;
   const data = [
     indicator('populacao_censo', 'População residente · Censo', asFinite(census['93:2022']), 'pessoas', '2022', 'ibge'),
     indicator('populacao_estimativa', 'População estimada', latestYear ? asFinite(estimated['9324:' + latestYear]) : null, 'pessoas', latestYear ? String(latestYear) : '—', 'ibge'),
     indicator('area', 'Área territorial', asFinite(census['6318:2022']), 'km²', '2022', 'ibge'),
     indicator('densidade', 'Densidade demográfica', asFinite(census['614:2022']), 'hab./km²', '2022', 'ibge'),
+    indicator('jovens_15_29', 'Pessoas de 15 a 29 anos · Censo', validYoung, 'pessoas', '2022', 'ibge', 'Soma das faixas 15–19, 20–24 e 25–29 anos no Censo 2022.'),
+    indicator('jovens_15_29_pct', 'Participação dos jovens de 15 a 29 anos', validYoung !== null && population > 0 ? within(100*validYoung/population,0,100) : null, '%', '2022', 'ibge', 'Percentual sobre a população residente censitária, não sobre estimativa populacional.'),
+    indicator('jovens_15_19', 'Adolescentes e jovens de 15 a 19 anos', age.size===3?age.get('93086'):null, 'pessoas','2022','ibge'),
+    indicator('jovens_20_24', 'Jovens de 20 a 24 anos', age.size===3?age.get('93087'):null, 'pessoas','2022','ibge'),
+    indicator('jovens_25_29', 'Jovens de 25 a 29 anos', age.size===3?age.get('93088'):null, 'pessoas','2022','ibge'),
+    indicator('alfabetizacao_15mais', 'Taxa de alfabetização · 15 anos ou mais', literacy, '%', '2022','ibge', 'IBGE tabela 9543; não equivale à conclusão do ensino fundamental.'),
+    indicator('sem_medio_completo_18mais', 'Pessoas de 18 anos ou mais sem ensino médio completo', lowCount, 'pessoas','2022','ibge', 'Soma dos níveis sem instrução/fundamental incompleto e fundamental completo/médio incompleto.'),
+    indicator('sem_medio_completo_18mais_pct', 'Parcela de 18 anos ou mais sem ensino médio completo', lowPct, '%','2022','ibge', 'Denominador: total da população de 18 anos ou mais com níveis de instrução classificados na tabela 10061.'),
+    indicator('superior_completo_18mais_pct','Parcela de 18 anos ou mais com superior completo',higherPct,'%','2022','ibge'),
     indicator('orcamento_assistencia', 'Despesas liquidadas · Assistência Social', budget?.assist ?? null, 'R$', budget?.period ?? '—', 'tesouro', 'Despesa por função. Não representa orçamento disponível para novos projetos.'),
     indicator('orcamento_educacao', 'Despesas liquidadas · Educação', budget?.education ?? null, 'R$', budget?.period ?? '—', 'tesouro'),
     indicator('orcamento_saude', 'Despesas liquidadas · Saúde', budget?.health ?? null, 'R$', budget?.period ?? '—', 'tesouro')
   ];
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
   const modules = [
-    {id:'demografia', name:'Perfil demográfico',status:data.slice(0,4).some(v=>v.status==='verificado')?'verificado':'indisponivel',source:'ibge'},
-    {id:'orcamento', name:'Orçamento público',status:data.slice(4).some(v=>v.status==='verificado')?'verificado':'indisponivel',source:'tesouro'},
-    {id:'cadunico', name:'Cadastro Único e IVCAD',status:'nao_integrado',source:'mds',reason:'Integração estruturada municipal ainda não validada.'},
-    {id:'educacao', name:'Educação e IDEB',status:'nao_integrado',source:'inep',reason:'Importação do IDEB 2025 por município pendente.'},
-    {id:'aprendizagem', name:'Aprendizagem profissional',status:'nao_integrado',source:'mte',reason:'Importação do arquivo municipal do MTE pendente.'},
-    {id:'suas', name:'Proteção social e Censo SUAS',status:'nao_integrado',source:'suas',reason:'Importação dos dados municipais de unidades e serviços pendente.'},
-    {id:'trabalho', name:'Trabalho e renda',status:'nao_integrado',source:'mte',reason:'RAIS/Novo Caged ainda não validados.'},
-    {id:'publicos', name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para este município.'}
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025',status:'nao_integrado',source:'inep',reason:'Resultados publicados pelo INEP; carga municipal estruturada ainda em preparação.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único e IVCAD',status:'nao_integrado',source:'mds',reason:'Sem extração agregada municipal validada nesta versão.'},
+    {id:'aprendizagem',name:'Aprendizagem profissional',status:'nao_integrado',source:'mte',reason:'Importação do arquivo municipal do MTE pendente.'},
+    {id:'suas',name:'Proteção social e Censo SUAS',status:'nao_integrado',source:'suas',reason:'Importação de equipamentos e serviços municipais pendente.'},
+    {id:'trabalho',name:'Trabalho e renda',status:'nao_integrado',source:'mte',reason:'RAIS/Novo Caged ainda não validados.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
   ];
   const valid = data.filter(d => d.status === 'verificado').length;
   return { version: '2.0-homologacao', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
