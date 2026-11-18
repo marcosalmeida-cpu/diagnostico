@@ -60,7 +60,7 @@ function updateTabStates(){
   button.setAttribute('aria-pressed',String(active));
   const values=state.data?items[i].ids.map(id=>state.data.indicators.find(v=>v.id===id)).filter(Boolean):[];
   const count=values.filter(v=>v.status==='verificado'&&v.value!==null).length;
-  button.querySelector('.tab-count').textContent=!state.data?'—':items[i].ids.length===0?'Pendente':count+'/'+items[i].ids.length;
+  button.querySelector('.tab-count').textContent=!state.data?'—':items[i].ids.length===0?'Pendente':count+'/'+values.length;
  }
  for(const [selector,enabled] of [['#switchThemes',kind==='themes'],['#switchAudiences',kind==='audiences']]){
   const button=qs(selector);
@@ -88,7 +88,7 @@ function drawPanel(d){
  qs('#groupDescription').textContent=group.description;
  const all=group.ids.map(id=>d?.indicators?.find(v=>v.id===id)).filter(Boolean);
  const verified=all.filter(ind=>ind.status==='verificado'&&ind.value!==null);
- const total=group.ids.length;
+ const total=all.length; // denominador apenas dos indicadores servidos para a UF selecionada
  const label=!d?'Aguardando consulta':total===0?'Em implantação':verified.length===total?'Validado neste recorte':verified.length?'Parcial':'Indisponível';
  qs('#groupStatus').textContent=label;
  qs('#indicatorCount').textContent=(d?verified.length:0)+' verificados';
