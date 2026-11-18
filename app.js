@@ -3,7 +3,7 @@ const qs = s=>document.querySelector(s);
 const state={selected:null,data:null,analysis:null,searchController:null};
 const nf=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
 const curr=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
-const idToLabel={'verificado':'Verificado','nao_integrado':'Não integrado','indisponivel':'Indisponível'};
+const idToLabel={'verificado':'Verificado','nao_integrado':'Não integrado','indisponivel':'Indisponível','parcial':'Parcial'};
 function status(text,problem=false){const e=qs('#globalNotice');e.querySelector('span:last-child').textContent=text;e.style.background=problem?'#fff4e6':'#e9f2ff';}
 function fmt(ind){if(!ind||ind.value===null)return '—';if(ind.unit==='R$')return curr.format(ind.value);return nf.format(ind.value)+(ind.unit==='pessoas'?'':ind.unit==='km²'?' km²':ind.unit==='hab./km²'?' hab./km²':ind.unit==='%'?'%':'');}
 function enableReady(on){qs('#analysisBtn').disabled=!on;qs('#pdfTop').disabled=!on;qs('#pdfBottom').disabled=!on;}
@@ -62,6 +62,8 @@ function render(d){
  set('#kpiEstimate',fmt(get('populacao_estimativa')));
  set('#kpiYouth',fmt(get('jovens_15_29')));
  set('#kpiLiteracy',fmt(get('alfabetizacao_15mais')));
+ set('#kpiIdebInitial',fmt(get('ideb_iniciais_publica_2025')));
+ set('#kpiIdebFinal',fmt(get('ideb_finais_publica_2025')));
  set('#kpiArea',fmt(get('area')));
  set('#kpiAssist',fmt(get('orcamento_assistencia')));
  set('#metaEstimate','IBGE · '+(get('populacao_estimativa')?.period||'Competência indisponível'));
@@ -71,7 +73,7 @@ function render(d){
  const list=qs('#indicatorList');list.replaceChildren();
  let currentGroup='';
  for(const ind of d.indicators){
-  const group=ind.id.startsWith('orcamento_')?'EXECUÇÃO ORÇAMENTÁRIA':(ind.id.startsWith('jovens_')?'JUVENTUDE':(ind.id.includes('alfabetizacao')||ind.id.includes('medio')||ind.id.includes('superior'))?'EDUCAÇÃO E ESCOLARIDADE':'PERFIL DEMOGRÁFICO');
+  const group=ind.id.startsWith('orcamento_')?'EXECUÇÃO ORÇAMENTÁRIA':(ind.id.startsWith('jovens_')?'JUVENTUDE':(ind.id.includes('alfabetizacao')||ind.id.includes('medio')||ind.id.includes('superior')||ind.id.startsWith('ideb_'))?'EDUCAÇÃO E ESCOLARIDADE':'PERFIL DEMOGRÁFICO');
   if(group!==currentGroup){const heading=document.createElement('div');heading.className='indicator-group';heading.textContent=group;list.append(heading);currentGroup=group;}
   const line=document.createElement('div');line.className='indicator-line '+(ind.status==='verificado'?'':'unavailable');
   const left=document.createElement('div');const b=document.createElement('b');b.textContent=ind.label;
@@ -87,7 +89,7 @@ function render(d){
   const card=document.createElement('article');card.className='module';
   const header=document.createElement('div');header.className='module-top';
   const title=document.createElement('b');title.textContent=mod.name;
-  const tag=document.createElement('span');tag.className='pill '+(mod.status==='verificado'?'ok':mod.status==='nao_integrado'?'pending':'bad');
+  const tag=document.createElement('span');tag.className='pill '+(mod.status==='verificado'?'ok':(mod.status==='nao_integrado'||mod.status==='parcial')?'pending':'bad');
   tag.textContent=idToLabel[mod.status]||mod.status;header.append(title,tag);
   const desc=document.createElement('small');desc.textContent=mod.reason||(mod.status==='verificado'?'Consulta estruturada com valores rastreáveis.':'Sem dados validados.');
   const anchor=document.createElement('a');anchor.href=d.sources[mod.source]?.url||'#';anchor.target='_blank';anchor.rel='noopener noreferrer';anchor.textContent='Consultar fonte oficial ↗';
