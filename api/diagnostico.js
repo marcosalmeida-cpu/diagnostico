@@ -3,7 +3,7 @@
 const IBGE = 'https://servicodados.ibge.gov.br';
 const SICONFI = 'https://apidatalake.tesouro.gov.br';
 const {getCras}=require('./suas');
-const {getBudget}=require('./orcamento-publico');
+const {getBudget,budgetLines}=require('./orcamento-publico');
 const {getBenefits}=require('./beneficios-cgu');
 const {getEconomia,getIvcad}=require('./dados-dinamicos');
 const {getByMunicipio:readCagedPE,SOURCE:CAGED_PE_SOURCE}=require('../data/caged2026pe');
@@ -285,7 +285,7 @@ async function getDiagnosis(code) {
   ];
   for(const [id,label] of historic)data.push(indicator(id,label,null,'índice (0–1)','2010','atlas_pnud','Atlas Brasil/PNUD: dados censitários 2010. A API municipal automática ainda não foi validada.'));
   data.push(indicator('mse_sinase_municipio','Adolescentes em MSE no município',null,'pessoas','—','sinase_mdhc','SINASE tem levantamentos nacionais/estaduais, sem API municipal regular validada nesta integração.'));
-  const lines=budgetDetail?.entries||[];
+  const lines=budgetDetail?.entries||budgetLines.map(([id,label,code,note])=>({id,label,value:null,unit:'R$',period:'—',source:'tesouro_dca',note}));
   const allBudget=[...lines,
     {id:'pib_municipal',label:'PIB municipal (contexto, não receita fiscal)',value:economic.gdp?.pib??null,unit:'R$',period:economic.gdp?.year??'—',source:'ibge_pib',note:'PIB não representa dinheiro do orçamento municipal.'},
     {id:'pib_percapita',label:'PIB per capita municipal · valor oficial',value:null,unit:'R$',period:'—',source:'ibge_pib',note:'Aguarda fonte com PIB e população do mesmo ano. Não combinar PIB 2023 com população de outro ano.'}
