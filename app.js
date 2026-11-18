@@ -5,7 +5,7 @@ const nf=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
 const curr=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
 const idToLabel={'verificado':'Verificado','nao_integrado':'Não integrado','indisponivel':'Indisponível'};
 function status(text,problem=false){const e=qs('#globalNotice');e.querySelector('span:last-child').textContent=text;e.style.background=problem?'#fff4e6':'#e9f2ff';}
-function fmt(ind){if(!ind||ind.value===null)return '—';if(ind.unit==='R$')return curr.format(ind.value);return nf.format(ind.value)+(ind.unit==='pessoas'?'':ind.unit==='km²'?' km²':ind.unit==='hab./km²'?' hab./km²':'');}
+function fmt(ind){if(!ind||ind.value===null)return '—';if(ind.unit==='R$')return curr.format(ind.value);return nf.format(ind.value)+(ind.unit==='pessoas'?'':ind.unit==='km²'?' km²':ind.unit==='hab./km²'?' hab./km²':ind.unit==='%'?'%':'');}
 function enableReady(on){qs('#analysisBtn').disabled=!on;qs('#pdfTop').disabled=!on;qs('#pdfBottom').disabled=!on;}
 function select(m){
   state.selected=m;state.data=null;state.analysis=null;
@@ -60,6 +60,8 @@ function render(d){
  const get=id=>d.indicators.find(x=>x.id===id);
  set('#kpiCensus',fmt(get('populacao_censo')));
  set('#kpiEstimate',fmt(get('populacao_estimativa')));
+ set('#kpiYouth',fmt(get('jovens_15_29')));
+ set('#kpiLiteracy',fmt(get('alfabetizacao_15mais')));
  set('#kpiArea',fmt(get('area')));
  set('#kpiAssist',fmt(get('orcamento_assistencia')));
  set('#metaEstimate','IBGE · '+(get('populacao_estimativa')?.period||'Competência indisponível'));
@@ -67,7 +69,10 @@ function render(d){
  set('#territoryCaption',d.municipio.nome+' / '+d.municipio.uf+' · Código IBGE '+d.municipio.codigoIBGE+' · fontes oficiais e transparência metodológica.');
  set('#lastUpdated','CONSULTADO EM '+new Date(d.generatedAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));
  const list=qs('#indicatorList');list.replaceChildren();
+ let currentGroup='';
  for(const ind of d.indicators){
+  const group=ind.id.startsWith('orcamento_')?'EXECUÇÃO ORÇAMENTÁRIA':(ind.id.startsWith('jovens_')?'JUVENTUDE':(ind.id.includes('alfabetizacao')||ind.id.includes('medio')||ind.id.includes('superior'))?'EDUCAÇÃO E ESCOLARIDADE':'PERFIL DEMOGRÁFICO');
+  if(group!==currentGroup){const heading=document.createElement('div');heading.className='indicator-group';heading.textContent=group;list.append(heading);currentGroup=group;}
   const line=document.createElement('div');line.className='indicator-line '+(ind.status==='verificado'?'':'unavailable');
   const left=document.createElement('div');const b=document.createElement('b');b.textContent=ind.label;
   const sm=document.createElement('small');sm.textContent=(d.sources[ind.source]?.name||'Fonte não cadastrada')+' · '+ind.period;
