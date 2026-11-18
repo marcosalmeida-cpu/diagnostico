@@ -4,6 +4,7 @@ const test=require('node:test');
 const {PDFDocument}=require('pdf-lib');
 const {getByMunicipio,provenance}=require('../data/ideb2025');
 const {generate}=require('../api/relatorio');
+const {getByMunicipio:getMte,provenance:mteProvenance}=require('../data/mte2026');
 
 test('IDEB 2025 - resultado municipal oficial da rede pública',()=>{
  assert.deepEqual(getByMunicipio('3106200'),{inicial:6.3,final:5.2});
@@ -15,6 +16,19 @@ test('IDEB 2025 - resultado municipal oficial da rede pública',()=>{
  assert.equal(provenance.rede,'Pública');
  assert.match(provenance.sha256Iniciais,/^[a-f0-9]{64}$/);
  assert.match(provenance.sha256Finais,/^[a-f0-9]{64}$/);
+});
+test('Potencial de cota MTE 07/2026 corresponde ao agregado setorial oficial',()=>{
+ const samples={'3106200':25070,'3550308':111746,'2611606':14162,'3154606':710};
+ for(const [ibge,expected] of Object.entries(samples)){
+  const d=getMte(ibge);
+  assert.equal(d.total,expected);
+  assert.equal(Object.values(d.setores).reduce((a,b)=>a+b,0),expected);
+ }
+ assert.equal(getMte('0000000'),null);
+ assert.equal(mteProvenance.competencia,'07/2026');
+ assert.equal(mteProvenance.municipiosValidados,5518);
+ assert.equal(mteProvenance.municipiosSemCorrespondenciaExata,52);
+ assert.match(mteProvenance.sha256,/^[a-f0-9]{64}$/);
 });
 test('PDF é legível, multipágina e não trata lacunas como valor zero',async()=>{
  const sources={

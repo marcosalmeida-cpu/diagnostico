@@ -2,6 +2,10 @@
 
 const IBGE = 'https://servicodados.ibge.gov.br';
 const SICONFI = 'https://apidatalake.tesouro.gov.br';
+function readPotential2026(code){
+  try{return require('../data/mte2026').getByMunicipio(code);}
+  catch(_){return null;}
+}
 function readIdeb2025(code){
   try { return require('../data/ideb2025').getByMunicipio(code); }
   catch (_) { return {inicial:null,final:null}; }
@@ -12,7 +16,7 @@ const SOURCES = {
   tesouro: { name: 'Tesouro Nacional · SICONFI', url: 'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos' },
   mds: { name: 'MDS · Cadastro Único e IVCAD', url: 'https://www.gov.br/mds/pt-br/orgaos/SAGICAD/dados-e-ferramentas-informacionais/dados-e-ferramentas-do-cadastro-unico/' },
   inep: { name: 'INEP · IDEB', url: 'https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/ideb/resultados' },
-  mte: { name: 'MTE · Potencial de cota de aprendizagem', url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/insercao-de-aprendiz-1' },
+  mte: { name: 'MTE/SIT · Potencial de aprendizagem · 07/2026', url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/insercao-de-aprendiz-1/potencial_ead_julho-1.xlsx' },
   suas: { name: 'MDS · Censo SUAS', url: 'https://www.gov.br/mds/pt-br/acoes-e-programas/suas/gestao-do-suas/vigilancia-socioassistencial-1/censo-suas' }
 };
 
@@ -101,6 +105,7 @@ async function getDiagnosis(code) {
   const lowPct = Number.isFinite(lowCount) && Number.isFinite(total18) && total18 > 0 ? within(100*lowCount/total18,0,100) : null;
   const higherPct = Number.isFinite(total18) && total18 > 0 ? within(100*education.get('99713')/total18,0,100) : null;
   const ideb=readIdeb2025(codigo);
+  const learning=readPotential2026(codigo);
   const data = [
     indicator('populacao_censo', 'População residente · Censo', asFinite(census['93:2022']), 'pessoas', '2022', 'ibge'),
     indicator('populacao_estimativa', 'População estimada', latestYear ? asFinite(estimated['9324:' + latestYear]) : null, 'pessoas', latestYear ? String(latestYear) : '—', 'ibge'),
@@ -117,6 +122,13 @@ async function getDiagnosis(code) {
     indicator('superior_completo_18mais_pct','Parcela de 18 anos ou mais com superior completo',higherPct,'%','2022','ibge'),
     indicator('ideb_iniciais_publica_2025','IDEB 2025 · anos iniciais · rede pública',ideb.inicial,'nota (0–10)','2025','inep','Dados da rede pública municipalmente agregados pelo INEP; escala de 0 a 10.'),
     indicator('ideb_finais_publica_2025','IDEB 2025 · anos finais · rede pública',ideb.final,'nota (0–10)','2025','inep','Dados da rede pública municipalmente agregados pelo INEP; escala de 0 a 10.'),
+    indicator('mte_potencial_cota','Potencial de cota de aprendizagem profissional',learning?.total??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
+    indicator('mte_cota_comercio','Potencial da cota · comércio',learning?.setores?.['Comércio']??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
+    indicator('mte_cota_servicos','Potencial da cota · serviços',learning?.setores?.['Serviços']??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
+    indicator('mte_cota_industria','Potencial da cota · indústria',learning?.setores?.['Indústria']??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
+    indicator('mte_cota_agricultura','Potencial da cota · agricultura',learning?.setores?.['Agricultura']??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
+    indicator('mte_cota_transportes','Potencial da cota · transportes',learning?.setores?.['Transportes']??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
+    indicator('mte_cota_outros','Potencial da cota · outros setores',learning?.setores?.['Outros']??null,'postos potenciais','07/2026','mte','Potencial normativo por município, não representa oportunidades abertas nem vagas de contratação.'),
     indicator('orcamento_assistencia', 'Despesas liquidadas · Assistência Social', budget?.assist ?? null, 'R$', budget?.period ?? '—', 'tesouro', 'Despesa por função. Não representa orçamento disponível para novos projetos.'),
     indicator('orcamento_educacao', 'Despesas liquidadas · Educação', budget?.education ?? null, 'R$', budget?.period ?? '—', 'tesouro'),
     indicator('orcamento_saude', 'Despesas liquidadas · Saúde', budget?.health ?? null, 'R$', budget?.period ?? '—', 'tesouro')
@@ -129,7 +141,7 @@ async function getDiagnosis(code) {
     {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
     {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
     {id:'cadunico',name:'Cadastro Único e IVCAD',status:'nao_integrado',source:'mds',reason:'Sem extração agregada municipal validada nesta versão.'},
-    {id:'aprendizagem',name:'Aprendizagem profissional',status:'nao_integrado',source:'mte',reason:'Importação do arquivo municipal do MTE pendente.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
     {id:'suas',name:'Proteção social e Censo SUAS',status:'nao_integrado',source:'suas',reason:'Importação de equipamentos e serviços municipais pendente.'},
     {id:'trabalho',name:'Trabalho e renda',status:'nao_integrado',source:'mte',reason:'RAIS/Novo Caged ainda não validados.'},
     {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
