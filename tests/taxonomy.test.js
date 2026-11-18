@@ -38,6 +38,7 @@ test('todos os indicadores estáticos ou gerados dinamicamente estão mapeados s
 });
 test('layout compacto mantém navegação acessível e controles ativos',()=>{
  for(const id of ['switchThemes','switchAudiences','activeTabs','integrityDisclosure','activePanel','featuredMetrics','groupTitle','groupDescription','groupStatus','indicatorList','indicatorCount','showAllBtn','groupGaps','coverage','coverageBar','moduleList','pdfTop','pdfBottom'])assert.ok(html.includes('id="'+id+'"'),id+' ausente');
+ assert.ok(!html.includes('class="sample-row"')&&!html.includes('sample-city'),'A pesquisa não deve exibir cidades de exemplo');
  assert.ok(html.indexOf('taxonomy.js')<html.indexOf('app.js'));
  assert.match(html,/class="hero hero-compact"/);
  assert.match(html,/class="rail-brand"/);
