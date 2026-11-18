@@ -23,13 +23,13 @@ test('6 grupos temáticos e 6 públicos, únicos e corretamente rotulados',()=>{
   for(const p of group.pending)assert.match(p.url,/^https:\/\//);
  }
 });
-test('todos os 39 indicadores atuais continuam alcançáveis sem informação fabricada',()=>{
- assert.equal(liveIds.length,39);
+test('todos os 59 identificadores potenciais nos seus eixos continuam alcançáveis sem informação fabricada',()=>{
+ assert.equal(liveIds.length,59);
  const reachable=new Set(themes.flatMap(x=>[...x.ids,...(x.contextIds||[])]));
  for(const id of liveIds)assert.ok(reachable.has(id),id+' perdido da taxonomia');
  for(const g of [...themes,...audiences])for(const id of [...g.ids,...(g.contextIds||[])])assert.ok(liveIds.includes(id),id+' não existe na API');
- assert.equal(themes.find(x=>x.id==='trabalho').ids.length,0);
- assert.equal(themes.find(x=>x.id==='clima').ids.length,0);
+ assert.equal(themes.find(x=>x.id==='trabalho').ids.length,4);
+ assert.equal(themes.find(x=>x.id==='clima').ids.length,7);
  assert.equal(audiences.find(x=>x.id==='pop-rua').ids.length,0);
  assert.equal(audiences.find(x=>x.id==='lgbt').ids.length,0);
  assert.equal(audiences.find(x=>x.id==='socioeducativa').ids.length,0);

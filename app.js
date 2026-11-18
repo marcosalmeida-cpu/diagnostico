@@ -60,7 +60,7 @@ function updateTabStates(){
   button.setAttribute('aria-pressed',String(active));
   const values=state.data?items[i].ids.map(id=>state.data.indicators.find(v=>v.id===id)).filter(Boolean):[];
   const count=values.filter(v=>v.status==='verificado'&&v.value!==null).length;
-  button.querySelector('.tab-count').textContent=!state.data?'—':items[i].ids.length===0?'Pendente':count+'/'+items[i].ids.length;
+  button.querySelector('.tab-count').textContent=!state.data?'—':items[i].ids.length===0?'Pendente':count+'/'+values.length;
  }
  for(const [selector,enabled] of [['#switchThemes',kind==='themes'],['#switchAudiences',kind==='audiences']]){
   const button=qs(selector);
@@ -88,7 +88,7 @@ function drawPanel(d){
  qs('#groupDescription').textContent=group.description;
  const all=group.ids.map(id=>d?.indicators?.find(v=>v.id===id)).filter(Boolean);
  const verified=all.filter(ind=>ind.status==='verificado'&&ind.value!==null);
- const total=group.ids.length;
+ const total=all.length; // only geographic coverage of values returned by the API
  const label=!d?'Aguardando consulta':total===0?'Em implantação':verified.length===total?'Validado neste recorte':verified.length?'Parcial':'Indisponível';
  qs('#groupStatus').textContent=label;
  qs('#indicatorCount').textContent=(d?verified.length:0)+' verificados';
@@ -137,7 +137,13 @@ function drawPanel(d){
 }
 
 function status(text,problem=false){const e=qs('#globalNotice');e.querySelector('span:last-child').textContent=text;e.style.background=problem?'#fff4e6':'#e9f2ff';}
-function fmt(ind){if(!ind||ind.value===null)return '—';if(ind.unit==='R$')return curr.format(ind.value);return nf.format(ind.value)+(ind.unit==='pessoas'?'':ind.unit==='km²'?' km²':ind.unit==='hab./km²'?' hab./km²':ind.unit==='%'?'%':ind.unit==='postos potenciais'?' postos potenciais':'');}
+function fmt(ind){
+ if(!ind||ind.value===null||ind.value===undefined)return '—';
+ if(ind.unit==='R$')return curr.format(ind.value);
+ if(ind.unit==='índice (0–1)')return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}).format(ind.value);
+ const suffix=ind.unit==='km²'?' km²':ind.unit==='hab./km²'?' hab./km²':ind.unit==='%'?'%':ind.unit==='postos potenciais'?' postos potenciais':'';
+ return nf.format(ind.value)+suffix;
+}
 function enableReady(on){qs('#analysisBtn').disabled=!on;qs('#pdfTop').disabled=!on;qs('#pdfBottom').disabled=!on;}
 function select(m){
   state.selected=m;state.data=null;state.analysis=null;

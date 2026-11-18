@@ -119,3 +119,15 @@ Não configurar credenciais nem dados pessoais no repositório. O PDF e a IA só
 - **39 indicadores demonstrativos**, sendo dez novos do IBGE/SIDRA 9514, Censo 2022, validados por sexo/idade, com recortes de Mulheres, Pessoas Idosas e Juventude.
 - Auditoria de fontes em painel recolhível, sem supressão de dados, notas, competência ou PDF.
 - População por sexo no Censo não corresponde a identidade de gênero; nenhuma vulnerabilidade é inferida do total populacional.
+
+## V3.3 — Fontes sociais e socioambientais validadas
+
+- Mantida a **barra Premium B**, cor de destaque amarela oficial, mesmo endereço institucional.
+- **+7 indicadores municipais nacionais** do IBGE/Censo 2022 (água e esgotamento), com denominadores conciliados e recorte de domicílios particulares permanentes ocupados.
+- **+9 indicadores estaduais** do IVCAD 2026 para **185 municípios de Pernambuco**, incluindo índice geral e seis dimensões; os universos de famílias e pessoas são da extração IVCAD, não de todo o CadÚnico.
+- **+4 indicadores mensais de emprego formal** do Novo Caged setembro/2026 apenas para **183 municípios de Pernambuco**, com 179 salários médios nominais de admissão e conciliação de saldo mensal.
+- **Total de IDs integrados no projeto:** 59; consultas de PE com 59 indicadores potenciais (58 quando salário indisponível); consultas de outros estados com 46 indicadores, sem extrapolar dados estaduais.
+- PDF institucional reconsulta as fontes nacionais e lê snapshots versionados e auditados por SHA-256 das duas bases de PE. O PDF agora inclui seções IVCAD, saneamento e Novo Caged, preservando as limitações.
+- [Rastreabilidade, metodologia e avisos de interpretação](docs/INTEGRACAO-IVCAD-CAGED-SANEAMENTO-2026.md).
+
+As séries estaduais estáticas **não** se atualizam automaticamente. Uma nova competência exige reextração, checagens e versionamento. Outras UFs: IVCAD nacional e Caged nacional **não integrados** nesta etapa.

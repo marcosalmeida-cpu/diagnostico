@@ -64,6 +64,9 @@ function text(page,string,x,y,style) {
 }
 function rule(page,y,x=42,w=511){page.drawLine({start:{x,y},end:{x:x+w,y},thickness:1,color:COLORS.line})}
 function sectionOf(id){
+ if(id.startsWith('caged_'))return 'TRABALHO FORMAL - NOVO CAGED 09/2026 (PE)';
+ if(id.startsWith('ivcad_'))return 'IVCAD 2026 - VULNERABILIDADE FAMILIAR (PE)';
+ if(id.startsWith('saneamento_'))return 'INFRAESTRUTURA SOCIOAMBIENTAL - CENSO 2022';
  if(id.startsWith('suas_'))return 'PROTEÇÃO SOCIAL - CENSO SUAS 2024';
  if(id.startsWith('mte_'))return 'APRENDIZAGEM PROFISSIONAL - POTENCIAL DE COTA';
  if(id.startsWith('orcamento_'))return 'EXECUÇÃO ORÇAMENTÁRIA';
@@ -74,9 +77,11 @@ function sectionOf(id){
  return 'PERFIL DEMOGRÁFICO';
 }
 function formatIndicator(v){
- if(v.value===null)return 'Indisponível';
+ if(v.value===null||v.value===undefined)return 'Indisponível';
  if(v.unit==='R$')return currency.format(v.value);
- return number.format(v.value)+(v.unit==='pessoas'?' pessoas':v.unit==='%'?'%':v.unit==='km²'?' km²':v.unit==='hab./km²'?' hab./km²':v.unit==='postos potenciais'?' postos potenciais':v.unit==='unidades'?' unidades':'');
+ if(v.unit==='índice (0–1)')return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}).format(v.value)+' (0 a 1)';
+ const suffix=v.unit==='pessoas'?' pessoas':v.unit==='%'?'%':v.unit==='km²'?' km²':v.unit==='hab./km²'?' hab./km²':v.unit==='postos potenciais'?' postos potenciais':v.unit==='unidades'?' unidades':v.unit==='famílias'?' famílias':v.unit==='domicílios'?' domicílios':'';
+ return number.format(v.value)+suffix;
 }
 function makePage(pdf,fonts,title,subtitle){
  const p=pdf.addPage(A4),h=A4[1];
