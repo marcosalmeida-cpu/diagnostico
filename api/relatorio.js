@@ -49,7 +49,7 @@ function rule(page,y,x=42,w=511){page.drawLine({start:{x,y},end:{x:x+w,y},thickn
 function sectionOf(id){
  if(id.startsWith('orcamento_'))return 'EXECUÇÃO ORÇAMENTÁRIA';
  if(id.startsWith('jovens_'))return 'PERFIL DA JUVENTUDE';
- if(/(alfabetizacao|medio|superior)/.test(id))return 'ESCOLARIDADE E EDUCAÇÃO';
+ if(/(alfabetizacao|medio|superior|ideb)/.test(id))return 'ESCOLARIDADE E EDUCAÇÃO';
  return 'PERFIL DEMOGRÁFICO';
 }
 function formatIndicator(v){
