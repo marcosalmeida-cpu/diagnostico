@@ -1,24 +1,38 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {getByMunicipio:ivcad,SOURCE}=require('../data/ivcad2026pe');
+const {parseIvcadResponses,getIvcad}=require('../api/dados-dinamicos');
 const {extractSaneamento}=require('../api/diagnostico');
-
-test('IVCAD 2026 PE: dados oficiais de Recife, Caruaru e Petrolina sem contaminação de outras UFs',()=>{
- assert.equal(SOURCE.year,'2026');
- assert.equal(SOURCE.sha256,'cbe89ca8965dbf3c04054a1e503d98011aa9c0d4813026b351e205d994b603cd');
- const recife=ivcad('2611606');
- assert.equal(recife.familias,304844);
- assert.equal(recife.pessoas,630163);
- assert.ok(Math.abs(recife.geral-0.2657019417769235)<1e-13);
- assert.ok(Math.abs(recife.geral-([recife.nc,recife.dpi,recife.dca,recife.tqa,recife.dr,recife.ch].reduce((a,b)=>a+b,0)/6))<0.0001);
- assert.equal(ivcad('2604106').familias,110215);
- assert.equal(ivcad('2611101').pessoas,243471);
- assert.equal(ivcad('3106200'),null);
- assert.equal(ivcad('3550308'),null);
- assert.equal(ivcad('0000000'),null);
- assert.equal(ivcad('__proto__'),null);
+const fields=[
+ ['geral','IVCAD - indice geral',0.2657019417769235],
+ ['nc','IVCAD - necessidade de cuidados',0.358036180332333],
+ ['dpi','IVCAD - desenvolvimento na primeira infancia',0.06799294128316899],
+ ['dca','IVCAD - desenvolvimento de criancas e adolescentes',0.0329527705841454],
+ ['tqa','IVCAD - trabalho e qualificacao de adultos',0.6041322715867529],
+ ['dr','IVCAD - disponibilidade de recursos',0.3807386712885055],
+ ['ch','IVCAD - condicoes habitacionais',0.1503000685214341]
+];
+const values=fields.map(([key,indicador,valor])=>({
+ fonte:'seplag_ivcad',indicador,cd:'2611606',ano:2026,truncado:false,
+ observacoes:[{cd_municipio_ibge:'2611606',ano:2026,unidade:'Indice (0 a 1)',fonte_original:'MDS/CONDEPE - IVCAD',valor}]
+}));
+test('IVCAD PE por API pública exige 7 dimensões, ano, IBGE e média coerentes',()=>{
+ const d=parseIvcadResponses(values,'2611606');
+ assert.ok(d);
+ assert.equal(d.year,2026);
+ assert.ok(Math.abs(d.geral-0.2657019417769235)<1e-12);
+ assert.equal(parseIvcadResponses(values,'3154606'),null);
+ assert.equal(parseIvcadResponses(values.slice(0,6),'2611606'),null);
+ const invalid=JSON.parse(JSON.stringify(values));invalid[2].observacoes[0].valor=9;
+ assert.equal(parseIvcadResponses(invalid,'2611606'),null);
+ const mismatch=JSON.parse(JSON.stringify(values));mismatch[0].observacoes[0].valor=0.8;
+ assert.equal(parseIvcadResponses(mismatch,'2611606'),null);
 });
+test('IVCAD nunca emite índice de PE para município de outra UF',async()=>{
+ assert.equal(await getIvcad('3154606','MG'),null);
+ assert.equal(await getIvcad('3550308','SP'),null);
+});
+
 function fixture(code,classification,values){
  return [{id:381,resultados:Object.entries(values).map(([category,value])=>({
   classificacoes:[{id:classification,categoria:{[category]:'cat'}}],
