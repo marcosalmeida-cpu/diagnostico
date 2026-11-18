@@ -5,12 +5,29 @@ const {getDiagnosis} = require('./diagnostico');
 const {analyze} = require('./analise');
 
 const A4 = [595.28, 841.89];
+// Paleta Rede Cidadã / Guia da Marca - setembro de 2025.
 const COLORS = {
-  navy: rgb(.035,.108,.237), blue: rgb(.11,.245,.475), sky: rgb(.22,.44,.68),
-  pale: rgb(.945,.966,.985), green: rgb(.79,.94,.48), ink: rgb(.17,.26,.39),
-  gray: rgb(.39,.46,.55), line: rgb(.85,.89,.93), white: rgb(1,1,1),
-  neutral: rgb(.98,.987,.994)
+  navy: rgb(3/255,34/255,214/255), blue: rgb(3/255,34/255,214/255),
+  sky: rgb(101/255,200/255,243/255), red: rgb(1,0,31/255),
+  pale: rgb(.94,.97,1), green: rgb(1,192/255,0), ink: rgb(.12,.17,.28),
+  gray: rgb(.37,.45,.56), line: rgb(.87,.91,.96), white: rgb(1,1,1),
+  neutral: rgb(.985,.99,.997)
 };
+const BRANDPATHS = [
+  ['M436.290,218.145 C436.290,97.667 338.623,0 218.145,0 C97.667,0 0,97.667 0,218.145 C0,338.624 97.667,436.291 218.145,436.291 C338.623,436.291 436.290,338.624 436.290,218.145 Z',COLORS.blue],
+  ['M220.714,172.217 L220.714,100.913 L236.075,100.913 L236.075,139.266 C247.711,122.434 263.967,109.038 283.030,100.913 L283.030,117.454 C260.762,128.828 243.655,148.811 236.075,173.013 L236.075,257.429 L220.714,257.429 L220.714,173.147 L220.438,173.147 C220.521,172.833 220.627,172.530 220.714,172.217 Z',rgb(0,235/255,1)],
+  ['M189.121,163.519 C189.121,146.231 175.105,132.216 157.816,132.216 C140.526,132.216 126.510,146.231 126.510,163.519 C126.510,180.808 140.526,194.823 157.816,194.823 C175.105,194.823 189.121,180.808 189.121,163.519 Z',COLORS.green],
+  ['M220.899,351.336 C168.274,351.595 123.862,318.338 110.893,273.080 L127.135,273.080 C139.626,310.194 176.910,337.055 220.834,336.838 C264.576,336.653 301.416,309.880 313.757,273.080 L329.984,273.080 C317.181,317.963 273.319,351.114 220.899,351.336 Z',COLORS.red]
+];
+function drawBrandFace(page,x,y,size){
+  const scale=size/436.29;
+  for(const [path,color] of BRANDPATHS)page.drawSvgPath(path,{x,y,scale,color});
+}
+function brandStripe(page,y,height=5){
+  const segment=A4[0]/4;
+  [COLORS.sky,COLORS.blue,COLORS.red,COLORS.green].forEach((color,i)=>
+    page.drawRectangle({x:i*segment,y,width:segment+.2,height,color}));
+}
 const number=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
 const currency=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2});
 const clean=s=>String(s??'').replace(/[\u0000-\u001f]/g,' ')
@@ -47,6 +64,7 @@ function text(page,string,x,y,style) {
 }
 function rule(page,y,x=42,w=511){page.drawLine({start:{x,y},end:{x:x+w,y},thickness:1,color:COLORS.line})}
 function sectionOf(id){
+ if(id.startsWith('suas_'))return 'PROTEÇÃO SOCIAL - CENSO SUAS 2024';
  if(id.startsWith('mte_'))return 'APRENDIZAGEM PROFISSIONAL - POTENCIAL DE COTA';
  if(id.startsWith('orcamento_'))return 'EXECUÇÃO ORÇAMENTÁRIA';
  if(id.startsWith('jovens_'))return 'PERFIL DA JUVENTUDE';
@@ -56,11 +74,12 @@ function sectionOf(id){
 function formatIndicator(v){
  if(v.value===null)return 'Indisponível';
  if(v.unit==='R$')return currency.format(v.value);
- return number.format(v.value)+(v.unit==='pessoas'?' pessoas':v.unit==='%'?'%':v.unit==='km²'?' km²':v.unit==='hab./km²'?' hab./km²':v.unit==='postos potenciais'?' postos potenciais':'');
+ return number.format(v.value)+(v.unit==='pessoas'?' pessoas':v.unit==='%'?'%':v.unit==='km²'?' km²':v.unit==='hab./km²'?' hab./km²':v.unit==='postos potenciais'?' postos potenciais':v.unit==='unidades'?' unidades':'');
 }
 function makePage(pdf,fonts,title,subtitle){
  const p=pdf.addPage(A4),h=A4[1];
  p.drawRectangle({x:0,y:h-72,width:A4[0],height:72,color:COLORS.navy});
+ brandStripe(p,h-5,5);
  p.drawText('REDE CIDADÃ',{x:42,y:h-31,size:14,font:fonts.bold,color:COLORS.white});
  p.drawText('INTELIGÊNCIA SOCIOTERRITORIAL',{x:42,y:h-50,size:8,font:fonts.reg,color:COLORS.green});
  let y=h-103;
@@ -69,6 +88,7 @@ function makePage(pdf,fonts,title,subtitle){
  return {page:p,y:y-31};
 }
 function footer(p,i,total,fonts){
+ brandStripe(p,0,4);
  rule(p,48);
  const left='Diagnóstico Territorial Integrado  |  Rede Cidadã  |  HOMOLOGAÇÃO';
  p.drawText(clean(left),{x:42,y:33,size:7.5,font:fonts.reg,color:COLORS.gray});
@@ -83,7 +103,10 @@ function statBox(page,fonts,x,y,w,label,value,sub){
 function cover(pdf,fonts,d,analysis){
  const p=pdf.addPage(A4),h=A4[1],w=A4[0];
  p.drawRectangle({x:0,y:0,width:w,height:h,color:COLORS.navy});
- p.drawRectangle({x:0,y:h-17,width:w,height:17,color:COLORS.green});
+ brandStripe(p,h-14,14);
+ // Símbolo original do guia da marca em suporte claro, preservado sem distorções.
+ p.drawCircle({x:490,y:h-102,size:51,color:COLORS.white});
+ drawBrandFace(p,459,h-131,62);
  p.drawText('REDE CIDADÃ',{x:46,y:h-86,font:fonts.bold,size:19,color:COLORS.white});
  p.drawText('OBSERVATÓRIO DE REALIDADE SOCIAL',{x:46,y:h-112,font:fonts.reg,size:9,color:COLORS.green});
  p.drawText('DIAGNÓSTICO',{x:46,y:635,font:fonts.bold,size:38,color:COLORS.white});
