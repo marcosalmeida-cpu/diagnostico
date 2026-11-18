@@ -70,11 +70,14 @@
    <div class="notice" role="status" aria-live="polite" id="globalNotice"><span class="notice-icon">i</span><span>Ambiente de homologação: indicadores com fonte e competência verificados. Dados ausentes nunca são tratados como zero.</span></div>
    <section class="section compact-section" id="indicadores">
      <div class="section-heading compact-heading"><div><span class="overline blue">DIAGNÓSTICO TEMÁTICO E PÚBLICOS</span><h2>Panorama do território</h2><p id="territoryCaption">Selecione um município para explorar os indicadores disponíveis.</p></div><div class="stamp" id="lastUpdated">AGUARDANDO CONSULTA</div></div>
-     <div class="dashboard-nav" aria-label="Navegação por tema ou público">
-       <div class="dashboard-nav-header"><span>01 / EIXOS TEMÁTICOS</span><span class="nav-help">Deslize horizontalmente para visualizar outros eixos</span></div>
-       <div id="themeTabs" class="dashboard-tabs" role="group" aria-label="Eixos temáticos"></div>
-       <div class="dashboard-nav-header audience-title"><span>02 / PÚBLICOS PRIORITÁRIOS</span><span class="nav-help">Recortes sociais do mesmo município</span></div>
-       <div id="audienceTabs" class="dashboard-tabs dashboard-tabs-audiences" role="group" aria-label="Públicos prioritários"></div>
+     <div class="dashboard-nav premium-nav" aria-label="Navegação temática compacta">
+       <div class="premium-switch" role="group" aria-label="Tipo de recorte">
+         <button type="button" id="switchThemes" class="switch-button is-active" aria-pressed="true"><svg class="switch-icon" aria-hidden="true"><use href="#ic-data"/></svg>Temas</button>
+         <button type="button" id="switchAudiences" class="switch-button" aria-pressed="false"><svg class="switch-icon" aria-hidden="true"><use href="#ic-people"/></svg>Públicos</button>
+       </div>
+       <div class="premium-divider" aria-hidden="true"></div>
+       <div id="activeTabs" class="dashboard-tabs premium-tabs" role="group" aria-label="Selecione um recorte territorial"></div>
+       <span class="premium-nav-caption" id="navCaption" aria-live="polite">6 eixos</span>
      </div>
      <div class="active-panel" id="activePanel">
        <div class="active-panel-heading">
@@ -87,13 +90,14 @@
            <div class="panel-head"><div><h3>Indicadores do recorte</h3><p id="groupDataCaption">Competência e procedência identificadas</p></div><span class="minor" id="indicatorCount">0 verificados</span></div>
            <div id="indicatorList" class="indicator-list"><div class="empty">Nenhum município consultado.</div></div>
          </div>
+         <details class="integrity-disclosure" id="integrityDisclosure"><summary><span><svg class="audit-icon" aria-hidden="true"><use href="#ic-sources"/></svg>Qualidade dos dados e fontes em validação</span><span class="audit-chevron" aria-hidden="true">+</span></summary>
          <div class="panel dashboard-integrity">
            <div class="panel-head"><div><h3>Integridade dos dados</h3><p>Somente indicadores demonstrativos integrados</p></div><span class="status-tag" id="qualityTag">Aguardando</span></div>
            <div class="quality-number" id="coverage">—<small>do recorte disponível</small></div><div class="progress-track"><div id="coverageBar" style="width:0"></div></div>
            <p class="panel-help">Cobertura do conjunto demonstrativo, não uma medida de completude do diagnóstico social.</p>
            <div class="legend"><div><i class="green"></i>Verificado</div><div><i class="amber"></i>Não integrado</div><div><i class="gray"></i>Indisponível</div></div>
            <div id="groupGaps" class="group-gaps"><p>Fontes em preparação serão identificadas aqui.</p></div>
-         </div>
+         </div></details>
        </div>
      </div>
    </section>
