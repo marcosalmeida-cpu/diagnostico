@@ -39,46 +39,51 @@
     <div class="top-actions"><span class="chip chip-muted"><i></i> Homologação</span><button class="btn btn-dark" id="pdfTop" disabled type="button">↓ Exportar relatório PDF</button></div>
   </header>
   <main>
-   <section class="hero" id="visao">
+   <section class="hero hero-compact" id="visao" aria-label="Pesquisa do território">
      <div class="hero-copy">
-       <span class="overline">OBSERVATÓRIO DE REALIDADE SOCIAL</span>
-       <h2>Conhecer o território.<br><em>Decidir com evidências.</em></h2>
-       <p>Dados públicos, leitura social crítica e rastreabilidade para orientar a atuação da Rede Cidadã. Indicadores sem validação permanecem indisponíveis.</p>
-       <div class="search-label">SELECIONE O TERRITÓRIO</div>
+       <span class="overline">REDE CIDADÃ / INTELIGÊNCIA SOCIOTERRITORIAL</span>
+       <h2>Conhecer o território. <em>Decidir com evidências.</em></h2>
+       <p>Selecione o município para consultar indicadores públicos, fontes e possibilidades de atuação social.</p>
        <div class="search-row">
-         <div class="search-box"><span class="search-icon">⌕</span><input id="citySearch" type="search" autocomplete="off" placeholder="Pesquisar município ou código IBGE" aria-label="Pesquisar município"><div class="suggestions" id="suggestions" hidden></div></div>
-         <button class="btn btn-lime" id="loadBtn" disabled>Gerar diagnóstico <span>↗</span></button>
+         <div class="search-box"><span class="search-icon" aria-hidden="true">⌕</span><input id="citySearch" type="search" autocomplete="off" placeholder="Pesquisar município ou código IBGE" aria-label="Pesquisar município"><div class="suggestions" id="suggestions" hidden></div></div>
+         <button class="btn btn-lime" id="loadBtn" disabled type="button">Consultar território <span aria-hidden="true">↗</span></button>
        </div>
-       <div class="sample-row"><span>Consultas rápidas:</span><button class="sample-city" data-ibge="3106200" data-city="Belo Horizonte" data-uf="MG">Belo Horizonte</button><button class="sample-city" data-ibge="3550308" data-city="São Paulo" data-uf="SP">São Paulo</button><button class="sample-city" data-ibge="2611606" data-city="Recife" data-uf="PE">Recife</button></div>
+       <div class="sample-row"><span>Exemplos:</span><button class="sample-city" data-ibge="3106200" data-city="Belo Horizonte" data-uf="MG" type="button">Belo Horizonte</button><button class="sample-city" data-ibge="3154606" data-city="Ribeirão das Neves" data-uf="MG" type="button">Ribeirão das Neves</button><button class="sample-city" data-ibge="3550308" data-city="São Paulo" data-uf="SP" type="button">São Paulo</button><button class="sample-city" data-ibge="2611606" data-city="Recife" data-uf="PE" type="button">Recife</button></div>
      </div>
-     <div class="hero-visual" aria-hidden="true">
-       <div class="orbit a"></div><div class="orbit b"></div><div class="orbit c"></div>
-       <div class="pin"></div>
-       <div class="visual-card vc1"><span>01 / DEMOGRAFIA</span><b>Território</b><small>IBGE · base oficial</small></div>
-       <div class="visual-card vc2"><span>02 / FONTES</span><b>Rastreabilidade</b><small>Competência e procedência</small></div>
-       <div class="visual-card vc3"><span>03 / DECISÃO</span><b>Viabilidade social</b><small>Conclusões condicionadas</small></div>
+     <div class="hero-visual hero-signal" aria-hidden="true">
+       <div class="signal-ring ring-a"></div><div class="signal-ring ring-b"></div><div class="signal-ring ring-c"></div>
+       <div class="signal-core"><img src="/assets/rede-cidada-rostinho.svg" alt=""></div>
      </div>
    </section>
-   <div class="notice" role="status" id="globalNotice"><span class="notice-icon">i</span><span>Esta versão está em homologação. O relatório diferencia indicadores validados, indisponíveis e ainda não integrados.</span></div>
-   <section class="section" id="indicadores">
-    <div class="section-heading"><div><span class="overline blue">01 / LEITURA DO TERRITÓRIO</span><h2>Panorama territorial</h2><p id="territoryCaption">Selecione um município para consultar os indicadores em fontes públicas.</p></div><div class="stamp" id="lastUpdated">AGUARDANDO CONSULTA</div></div>
-    <div class="kpi-grid">
-      <article class="kpi"><div class="kpi-top"><span>População censitária</span><span class="kpi-icon">◉</span></div><strong id="kpiCensus">—</strong><div class="kpi-meta" id="metaCensus">IBGE · Censo 2022</div></article>
-      <article class="kpi"><div class="kpi-top"><span>População estimada</span><span class="kpi-icon">▦</span></div><strong id="kpiEstimate">—</strong><div class="kpi-meta" id="metaEstimate">IBGE · estimativa oficial</div></article>
-
-      <article class="kpi"><div class="kpi-top"><span>Jovens de 15 a 29 anos</span><span class="kpi-icon">◉</span></div><strong id="kpiYouth">—</strong><div class="kpi-meta">IBGE · Censo 2022</div></article>
-      <article class="kpi"><div class="kpi-top"><span>Alfabetização · 15+ anos</span><span class="kpi-icon">✎</span></div><strong id="kpiLiteracy">—</strong><div class="kpi-meta">IBGE · Censo 2022</div></article>
-      <article class="kpi"><div class="kpi-top"><span>Equipamentos CRAS · Censo SUAS</span><span class="kpi-icon">⌂</span></div><strong id="kpiCras">—</strong><div class="kpi-meta">MDS/SAGICAD · Censo SUAS 2024</div></article>
-      <article class="kpi"><div class="kpi-top"><span>Potencial de cota · Aprendizagem</span><span class="kpi-icon">◈</span></div><strong id="kpiPotential">—</strong><div class="kpi-meta">MTE/SIT · julho 2026 · não são oportunidades abertas</div></article>
-      <article class="kpi"><div class="kpi-top"><span>IDEB 2025 · anos iniciais</span><span class="kpi-icon">◈</span></div><strong id="kpiIdebInitial">—</strong><div class="kpi-meta">INEP · rede pública · 2025</div></article>
-      <article class="kpi"><div class="kpi-top"><span>IDEB 2025 · anos finais</span><span class="kpi-icon">◈</span></div><strong id="kpiIdebFinal">—</strong><div class="kpi-meta">INEP · rede pública · 2025</div></article>
-      <article class="kpi"><div class="kpi-top"><span>Área territorial</span><span class="kpi-icon">⌗</span></div><strong id="kpiArea">—</strong><div class="kpi-meta">IBGE · km²</div></article>
-      <article class="kpi kpi-navy"><div class="kpi-top"><span>Assistência Social</span><span class="kpi-icon">◈</span></div><strong id="kpiAssist">—</strong><div class="kpi-meta" id="metaAssist">Despesa liquidada · SICONFI</div></article>
-    </div>
-    <div class="two-col">
-      <div class="panel"><div class="panel-head"><div><h3>Indicadores disponíveis</h3><p>Com competência e origem identificadas</p></div><span class="minor" id="indicatorCount">0 verificados</span></div><div id="indicatorList" class="indicator-list"><div class="empty">Nenhum diagnóstico carregado.</div></div></div>
-      <div class="panel"><div class="panel-head"><div><h3>Integridade dos dados</h3><p>Indicadores demonstrativos desta versão</p></div><span class="status-tag" id="qualityTag">Aguardando</span></div><div class="quality-number" id="coverage">—<small>de cobertura</small></div><div class="progress-track"><div id="coverageBar" style="width:0"></div></div><p class="panel-help">A cobertura representa apenas os indicadores demonstrativos integrados. Não significa completude do diagnóstico social.</p><div class="legend"><div><i class="green"></i>Verificado</div><div><i class="amber"></i>Não integrado</div><div><i class="gray"></i>Indisponível</div></div></div>
-    </div>
+   <div class="notice" role="status" aria-live="polite" id="globalNotice"><span class="notice-icon">i</span><span>Ambiente de homologação: indicadores com fonte e competência verificados. Dados ausentes nunca são tratados como zero.</span></div>
+   <section class="section compact-section" id="indicadores">
+     <div class="section-heading compact-heading"><div><span class="overline blue">DIAGNÓSTICO TEMÁTICO E PÚBLICOS</span><h2>Panorama do território</h2><p id="territoryCaption">Selecione um município para explorar os indicadores disponíveis.</p></div><div class="stamp" id="lastUpdated">AGUARDANDO CONSULTA</div></div>
+     <div class="dashboard-nav" aria-label="Navegação por tema ou público">
+       <div class="dashboard-nav-header"><span>01 / EIXOS TEMÁTICOS</span><span class="nav-help">Deslize horizontalmente para visualizar outros eixos</span></div>
+       <div id="themeTabs" class="dashboard-tabs" role="group" aria-label="Eixos temáticos"></div>
+       <div class="dashboard-nav-header audience-title"><span>02 / PÚBLICOS PRIORITÁRIOS</span><span class="nav-help">Recortes sociais do mesmo município</span></div>
+       <div id="audienceTabs" class="dashboard-tabs dashboard-tabs-audiences" role="group" aria-label="Públicos prioritários"></div>
+     </div>
+     <div class="active-panel" id="activePanel">
+       <div class="active-panel-heading">
+          <div><span class="panel-kicker" id="groupKind">EIXO TEMÁTICO</span><h3 id="groupTitle">Demografia</h3><p id="groupDescription">Indicadores demográficos disponíveis, com recortes e competências oficiais.</p></div>
+          <div class="panel-action"><span class="status-tag" id="groupStatus">Aguardando consulta</span><button class="btn btn-outline btn-sm" type="button" id="showAllBtn" hidden>Ver todos</button></div>
+       </div>
+       <div id="featuredMetrics" class="featured-metrics" aria-live="polite"></div>
+       <div class="dashboard-data-layout">
+         <div class="panel indicator-panel">
+           <div class="panel-head"><div><h3>Indicadores do recorte</h3><p id="groupDataCaption">Competência e procedência identificadas</p></div><span class="minor" id="indicatorCount">0 verificados</span></div>
+           <div id="indicatorList" class="indicator-list"><div class="empty">Nenhum município consultado.</div></div>
+         </div>
+         <div class="panel dashboard-integrity">
+           <div class="panel-head"><div><h3>Integridade dos dados</h3><p>Somente indicadores demonstrativos integrados</p></div><span class="status-tag" id="qualityTag">Aguardando</span></div>
+           <div class="quality-number" id="coverage">—<small>do recorte disponível</small></div><div class="progress-track"><div id="coverageBar" style="width:0"></div></div>
+           <p class="panel-help">Cobertura do conjunto demonstrativo, não uma medida de completude do diagnóstico social.</p>
+           <div class="legend"><div><i class="green"></i>Verificado</div><div><i class="amber"></i>Não integrado</div><div><i class="gray"></i>Indisponível</div></div>
+           <div id="groupGaps" class="group-gaps"><p>Fontes em preparação serão identificadas aqui.</p></div>
+         </div>
+       </div>
+     </div>
    </section>
    <section class="section" id="analise">
     <div class="section-heading"><div><span class="overline blue">02 / INTELIGÊNCIA SOCIAL</span><h2>Análise territorial</h2><p>Leitura interpretativa estritamente baseada em dados públicos validados.</p></div><button class="btn btn-outline" id="analysisBtn" disabled>✧ Gerar análise social</button></div>
@@ -86,7 +91,7 @@
    </section>
    <section class="section" id="fontes">
     <div class="section-heading"><div><span class="overline blue">03 / TRANSPARÊNCIA</span><h2>Fontes oficiais e auditoria</h2><p>Cada tema indica sua condição de integração. Não há preenchimento artificial de lacunas.</p></div><span class="chip chip-muted">Referências públicas</span></div>
-    <div class="modules-grid" id="moduleList"><div class="empty">Escolha um município para verificar as integrações.</div></div>
+    <details class="sources-disclosure" id="sourcesDisclosure"><summary>Explorar situação das fontes e integrações <span>+</span></summary><div class="modules-grid" id="moduleList"><div class="empty">Escolha um município para verificar as integrações.</div></div></details>
     <div class="footnote"><b>Importante:</b> Data de consulta não é data da competência estatística. A ausência de fonte, erro de API ou dado desatualizado não deve ser apresentado como valor zero ou resultado atual.</div>
    </section>
    <section class="report-cta"><div><span class="overline">RELATÓRIO TÉCNICO</span><h2>Do território para a decisão.</h2><p>Exporte o conjunto de indicadores demonstrativos, fontes, limitações e leitura técnica para um PDF diagramado.</p></div><button class="btn btn-lime" id="pdfBottom" disabled>↓ Gerar relatório PDF</button></section>
