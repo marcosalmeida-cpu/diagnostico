@@ -13,6 +13,11 @@ function factualAnalysis(d) {
   if(literacy)facts.push('A taxa de alfabetização de pessoas com 15 anos ou mais foi de '+n.format(literacy.value)+'% no Censo 2022. O indicador não informa, isoladamente, conclusão escolar ou necessidade de qualificação profissional.');
   const idebInitial=find('ideb_iniciais_publica_2025'), idebFinal=find('ideb_finais_publica_2025');
   if(idebInitial||idebFinal)facts.push('O IDEB 2025 da rede pública municipalmente agregada foi '+(idebInitial?n.format(idebInitial.value):'não publicado')+' nos anos iniciais e '+(idebFinal?n.format(idebFinal.value):'não publicado')+' nos anos finais do ensino fundamental. O índice reflete aprendizagem e fluxo escolar; não mede sozinho vulnerabilidade social.');
+  const quota=find('mte_potencial_cota');
+  if(quota)facts.push('A base MTE/SIT (07/2026) registra potencial de cota de '+n.format(quota.value)+' aprendizes. Esse número representa potencial normativo e não deve ser chamado de oportunidades abertas, contratações ou vagas disponibilizadas.');
+  const sectors=[['comércio','mte_cota_comercio'],['serviços','mte_cota_servicos'],['indústria','mte_cota_industria'],['agricultura','mte_cota_agricultura'],['transportes','mte_cota_transportes'],['outros setores','mte_cota_outros']].map(([label,id])=>({label,value:find(id)?.value})).filter(x=>Number.isFinite(x.value));
+  if(quota&&sectors.length===6&&quota.value>0){const sorted=sectors.sort((a,b)=>b.value-a.value);facts.push('A maior parcela do potencial se concentra em '+sorted[0].label+' ('+n.format(sorted[0].value)+'), informação útil para mapear setores econômicos e parceiros, mas insuficiente para prever contratações ou demanda efetiva.');}
+
 
   if(lowSchool)facts.push('No recorte das pessoas de 18 anos ou mais, '+n.format(lowSchool.value)+'% não tinham concluído o ensino médio em 2022. Esse percentual não mede desemprego, mas pode orientar perguntas para o diagnóstico educacional e produtivo.');
 
