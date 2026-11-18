@@ -89,3 +89,19 @@ test('Censo SUAS 2024 - total CRAS coincide com 3 faixas sem inferir famílias a
  assert.match(reportUrl('Ribeirão das Neves','MG'),/^https:\/\/sagicad-mds\.github\.io/);
  assert.equal(reportUrl('Cidade','XX'),null);
 });
+
+test('Identidade Rede Cidadã 2025 com símbolo original e navegação somente por ícones',()=>{
+ const fs=require('node:fs');
+ const html=fs.readFileSync(require('node:path').join(__dirname,'..','index.html'),'utf8');
+ const css=fs.readFileSync(require('node:path').join(__dirname,'..','styles.css'),'utf8');
+ const svg=fs.readFileSync(require('node:path').join(__dirname,'..','assets','rede-cidada-rostinho.svg'),'utf8');
+ const sidebar=html.match(/<aside class="sidebar"[\s\S]*?<\/aside>/)?.[0];
+ assert.ok(sidebar);
+ assert.match(sidebar,/class="rail-brand"/);
+ assert.match(sidebar,/assets\/rede-cidada-rostinho\.svg/);
+ assert.doesNotMatch(sidebar,/>RC<\/div>|REDE CIDADÃ/);
+ assert.equal((sidebar.match(/class="rail-icon"/g)||[]).length,4);
+ for(const color of ['#0322D6','#65C8F3','#FF001F','#FFC000'])assert.ok(css.includes(color));
+ for(const color of ['#0322D6','#00EBFF','#FF001F','#FFC000'])assert.ok(svg.includes(color));
+ assert.match(html,/<nav class="mobile-tabs" aria-label="Navegação móvel">/);
+});
