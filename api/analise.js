@@ -10,6 +10,11 @@ function factualAnalysis(d) {
   const literacy=find('alfabetizacao_15mais'), lowSchool=find('sem_medio_completo_18mais_pct');
   const n=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1});
   if(youth && youthPercent)facts.push('O Censo 2022 identificou '+n.format(youth.value)+' residentes de 15 a 29 anos ('+n.format(youthPercent.value)+'% da população censitária). Esse contingente não representa automaticamente a demanda por aprendizagem profissional.');
+  const elderly=find('pessoas_idosas_60mais'),elderlyPct=find('pessoas_idosas_60mais_pct');
+  const women=find('populacao_mulheres'),womenPct=find('mulheres_pct');
+  if(elderly&&elderlyPct)facts.push('No Censo 2022, o município tinha '+n.format(elderly.value)+' residentes de 60 anos ou mais ('+n.format(elderlyPct.value)+'% da população). A proporção etária não mede, por si só, demanda por serviços socioassistenciais.');
+  if(women&&womenPct)facts.push('O recorte por sexo do Censo 2022 registrou '+n.format(women.value)+' residentes na categoria mulheres ('+n.format(womenPct.value)+'% da população). Essa classificação censitária não permite estimar automaticamente vulnerabilidades, identidades de gênero ou necessidades de atendimento.');
+
   if(literacy)facts.push('A taxa de alfabetização de pessoas com 15 anos ou mais foi de '+n.format(literacy.value)+'% no Censo 2022. O indicador não informa, isoladamente, conclusão escolar ou necessidade de qualificação profissional.');
   const idebInitial=find('ideb_iniciais_publica_2025'), idebFinal=find('ideb_finais_publica_2025');
   if(idebInitial||idebFinal)facts.push('O IDEB 2025 da rede pública municipalmente agregada foi '+(idebInitial?n.format(idebInitial.value):'não publicado')+' nos anos iniciais e '+(idebFinal?n.format(idebFinal.value):'não publicado')+' nos anos finais do ensino fundamental. O índice reflete aprendizagem e fluxo escolar; não mede sozinho vulnerabilidade social.');
