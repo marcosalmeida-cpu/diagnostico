@@ -23,12 +23,14 @@ test('6 grupos temáticos e 6 públicos, únicos e corretamente rotulados',()=>{
   for(const p of group.pending)assert.match(p.url,/^https:\/\//);
  }
 });
-test('todos os 59 identificadores potenciais nos seus eixos continuam alcançáveis sem informação fabricada',()=>{
- assert.equal(liveIds.length,59);
+test('todos os indicadores estáticos ou gerados dinamicamente estão mapeados sem valores fabricados',()=>{
+ assert.equal(liveIds.length,66);
+ const dynamicIds=Array.from({length:6},(_,i)=>'economia_setor_emprego_'+(i+1));
+ const known=new Set([...liveIds,...dynamicIds]);
  const reachable=new Set(themes.flatMap(x=>[...x.ids,...(x.contextIds||[])]));
  for(const id of liveIds)assert.ok(reachable.has(id),id+' perdido da taxonomia');
- for(const g of [...themes,...audiences])for(const id of [...g.ids,...(g.contextIds||[])])assert.ok(liveIds.includes(id),id+' não existe na API');
- assert.equal(themes.find(x=>x.id==='trabalho').ids.length,4);
+ for(const g of [...themes,...audiences])for(const id of [...g.ids,...(g.contextIds||[])])assert.ok(known.has(id),id+' não existe na API');
+ assert.equal(themes.find(x=>x.id==='trabalho').ids.length,19);
  assert.equal(themes.find(x=>x.id==='clima').ids.length,7);
  assert.equal(audiences.find(x=>x.id==='pop-rua').ids.length,0);
  assert.equal(audiences.find(x=>x.id==='lgbt').ids.length,0);
