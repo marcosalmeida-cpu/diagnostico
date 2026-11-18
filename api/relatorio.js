@@ -64,6 +64,7 @@ function text(page,string,x,y,style) {
 }
 function rule(page,y,x=42,w=511){page.drawLine({start:{x,y},end:{x:x+w,y},thickness:1,color:COLORS.line})}
 function sectionOf(id){
+ if(id.startsWith('caged_'))return 'TRABALHO FORMAL - NOVO CAGED 09/2026 (PE)';
  if(id.startsWith('ivcad_'))return 'IVCAD 2026 - VULNERABILIDADE FAMILIAR (PE)';
  if(id.startsWith('saneamento_'))return 'INFRAESTRUTURA SOCIOAMBIENTAL - CENSO 2022';
  if(id.startsWith('suas_'))return 'PROTEÇÃO SOCIAL - CENSO SUAS 2024';
