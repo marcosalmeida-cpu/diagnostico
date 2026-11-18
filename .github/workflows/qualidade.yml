@@ -1,0 +1,32 @@
+name: Qualidade do Diagnóstico Territorial
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    name: Dados, código e PDF
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Buscar código
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+      - name: Validar sintaxe
+        run: npm run check
+      - name: Verificar fontes e relatório
+        run: npm test
