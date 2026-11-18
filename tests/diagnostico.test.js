@@ -105,3 +105,27 @@ test('Identidade Rede Cidadã 2025 com símbolo original e navegação somente p
  for(const color of ['#0322D6','#00EBFF','#FF001F','#FFC000'])assert.ok(svg.includes(color));
  assert.match(html,/<nav class="mobile-tabs" aria-label="Navegação móvel">/);
 });
+
+
+test('IBGE Censo 2022: sexo e 60+ com partição sem duplicidades',()=>{
+ const {extractAgeSex}=require('../api/diagnostico');
+ const old=['93095','93096','93097','93098','49108','49109','60040','60041','6653'];
+ const ages=['100362','93086','93087','93088',...old];
+ const male=new Map([['100362',600],['93086',20],['93087',30],['93088',40],...old.map((id,i)=>[id,i===0?70:5])]);
+ const female=new Map([['100362',700],['93086',25],['93087',35],['93088',45],...old.map((id,i)=>[id,i===0?80:8])]);
+ function make(sex,vals){
+  return [...vals].map(([age,v])=>({
+    classificacoes:[{id:2,categoria:{[sex]:'sexo'}},{id:287,categoria:{[age]:'idade'}},{id:286,categoria:{113635:'total'}}],
+    series:[{localidade:{id:'3106200'},serie:{'2022':String(v)}}]
+  }));
+ }
+ const full=[{id:93,resultados:[...make('4',male),...make('5',female)]}];
+ const good=extractAgeSex(full,'3106200',1300,195);
+ assert.deepEqual(good,{male:600,female:700,olderMale:110,olderFemale:144,older:254,youthMale:90,youthFemale:105});
+ assert.equal(extractAgeSex(full,'3106200',1301,195),null);
+ assert.equal(extractAgeSex(full,'3106200',1300,196),null);
+ assert.equal(extractAgeSex(full,'3550308',1300,195),null);
+ const bad=JSON.parse(JSON.stringify(full));
+ bad[0].resultados[1].series[0].serie['2022']='-8';
+ assert.equal(extractAgeSex(bad,'3106200',1300,195),null);
+});

@@ -67,6 +67,8 @@ function sectionOf(id){
  if(id.startsWith('suas_'))return 'PROTEÇÃO SOCIAL - CENSO SUAS 2024';
  if(id.startsWith('mte_'))return 'APRENDIZAGEM PROFISSIONAL - POTENCIAL DE COTA';
  if(id.startsWith('orcamento_'))return 'EXECUÇÃO ORÇAMENTÁRIA';
+ if(id.startsWith('pessoas_idosas')||id.startsWith('mulheres_idosas')||id.startsWith('homens_idosos')||id.startsWith('mulheres_entre_idosos'))return 'PESSOAS IDOSAS - CENSO 2022';
+ if(id.startsWith('populacao_mulheres')||id.startsWith('populacao_homens')||id==='mulheres_pct')return 'COMPOSIÇÃO POR SEXO - CENSO 2022';
  if(id.startsWith('jovens_'))return 'PERFIL DA JUVENTUDE';
  if(/(alfabetizacao|medio|superior|ideb)/.test(id))return 'ESCOLARIDADE E EDUCAÇÃO';
  return 'PERFIL DEMOGRÁFICO';

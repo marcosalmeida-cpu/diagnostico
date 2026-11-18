@@ -70,6 +70,42 @@ function classifiedValues(data, code, classId, validIds) {
   return out;
 }
 const within = (value, min, max) => Number.isFinite(value) && value >= min && value <= max ? value : null;
+
+const OLDER_AGE_BANDS=['93095','93096','93097','93098','49108','49109','60040','60041','6653'];
+const YOUTH_AGE_BANDS=['93086','93087','93088'];
+function extractAgeSex(data,code,population,knownYouth=null){
+ if(!Array.isArray(data)||!Number.isSafeInteger(population)||population<=0)return null;
+ const records=new Map();
+ for(const item of data)for(const row of item.resultados||[]){
+  const classes=row.classificacoes||[];
+  const sex=classes.find(x=>String(x.id)==='2');
+  const age=classes.find(x=>String(x.id)==='287');
+  const method=classes.find(x=>String(x.id)==='286');
+  if(!sex||!age||!method)continue;
+  const sexIds=Object.keys(sex.categoria||{}),ageIds=Object.keys(age.categoria||{}),methodIds=Object.keys(method.categoria||{});
+  if(sexIds.length!==1||ageIds.length!==1||methodIds.length!==1||methodIds[0]!=='113635')continue;
+  const key=sexIds[0]+':'+ageIds[0];
+  if(!['4','5'].includes(sexIds[0]))continue;
+  if(!['100362',...OLDER_AGE_BANDS,...YOUTH_AGE_BANDS].includes(ageIds[0]))continue;
+  for(const serie of row.series||[]){
+   if(String(serie.localidade?.id)!==code)continue;
+   const n=numeric(serie.serie?.['2022']);
+   if(!Number.isSafeInteger(n)||n<0||records.has(key))return null;
+   records.set(key,n);
+  }
+ }
+ const required=['100362',...OLDER_AGE_BANDS,...YOUTH_AGE_BANDS];
+ if(required.some(a=>!records.has('4:'+a)||!records.has('5:'+a)))return null;
+ const male=records.get('4:100362'),female=records.get('5:100362');
+ if(male+female!==population)return null;
+ const count=(sex,ages)=>ages.reduce((sum,age)=>sum+records.get(sex+':'+age),0);
+ const olderMale=count('4',OLDER_AGE_BANDS),olderFemale=count('5',OLDER_AGE_BANDS);
+ const youthMale=count('4',YOUTH_AGE_BANDS),youthFemale=count('5',YOUTH_AGE_BANDS);
+ if(olderMale>male||olderFemale>female||youthMale>male||youthFemale>female)return null;
+ if(knownYouth!==null&&knownYouth!==youthMale+youthFemale)return null;
+ return {male,female,olderMale,olderFemale,older:olderMale+olderFemale,youthMale,youthFemale};
+}
+
 function indicator(id, label, value, unit, period, source, note = '') {
   return { id, label, value: Number.isFinite(value) ? value : null, unit, period, source, note, status: Number.isFinite(value) ? 'verificado' : 'indisponivel' };
 }
@@ -88,7 +124,8 @@ async function getDiagnosis(code) {
     json(IBGE + '/api/v3/agregados/9514/periodos/2022/variaveis/93?localidades=N6[' + codigo + ']&classificacao=2[6794]|287[93086,93087,93088]|286[113635]'),
     json(IBGE + '/api/v3/agregados/9543/periodos/2022/variaveis/2513?localidades=N6[' + codigo + ']&classificacao=2[6794]|86[95251]|287[100362]'),
     json(IBGE + '/api/v3/agregados/10061/periodos/2022/variaveis/2667?localidades=N6[' + codigo + ']&classificacao=1568[9493,9494,9495,99713]|58[95253]|2[6794]|86[95251]'),
-    getCras(municipio.nome,municipio.uf)
+    getCras(municipio.nome,municipio.uf),
+    json(IBGE + '/api/v3/agregados/9514/periodos/2022/variaveis/93?localidades=N6[' + codigo + ']&classificacao=2[4,5]|287[100362,93086,93087,93088,93095,93096,93097,93098,49108,49109,60040,60041,6653]|286[113635]')
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
@@ -101,6 +138,7 @@ async function getDiagnosis(code) {
   const young = age.size === 3 ? [...age.values()].reduce((a,b)=>a+b,0) : null;
   const population = asFinite(census['93:2022']);
   const validYoung = Number.isFinite(young) && young >= 0 && Number.isFinite(population) && young <= population ? young : null;
+  const ageSex=extractAgeSex(results[7].status==='fulfilled'?results[7].value:null,codigo,population,validYoung);
   const literacyRaw = results[4].status === 'fulfilled' ? seriesValues(results[4].value, codigo)['2513:2022'] : null;
   const literacy = within(literacyRaw, 0, 100);
   const education = classifiedValues(results[5].status === 'fulfilled' ? results[5].value : null, codigo, 1568, ['9493','9494','9495','99713']);
@@ -115,6 +153,16 @@ async function getDiagnosis(code) {
     indicator('populacao_estimativa', 'População estimada', latestYear ? asFinite(estimated['9324:' + latestYear]) : null, 'pessoas', latestYear ? String(latestYear) : '—', 'ibge'),
     indicator('area', 'Área territorial', asFinite(census['6318:2022']), 'km²', '2022', 'ibge'),
     indicator('densidade', 'Densidade demográfica', asFinite(census['614:2022']), 'hab./km²', '2022', 'ibge'),
+    indicator('populacao_mulheres','População de mulheres · sexo declarado no Censo',ageSex?.female??null,'pessoas','2022','ibge','Recorte do quesito sexo (Mulheres) do IBGE/Censo 2022; não identifica identidade de gênero ou orientação sexual.'),
+    indicator('populacao_homens','População de homens · sexo declarado no Censo',ageSex?.male??null,'pessoas','2022','ibge','Recorte do quesito sexo (Homens) do IBGE/Censo 2022.'),
+    indicator('mulheres_pct','Participação de mulheres na população',ageSex?within(100*ageSex.female/population,0,100):null,'%','2022','ibge','Denominador: população residente do Censo 2022.'),
+    indicator('pessoas_idosas_60mais','Pessoas idosas · 60 anos ou mais',ageSex?.older??null,'pessoas','2022','ibge','Soma das faixas quinquenais de 60 anos ou mais no Censo 2022.'),
+    indicator('pessoas_idosas_60mais_pct','Participação da população de 60 anos ou mais',ageSex?within(100*ageSex.older/population,0,100):null,'%','2022','ibge','Denominador: população residente censitária 2022.'),
+    indicator('mulheres_idosas_60mais','Mulheres com 60 anos ou mais',ageSex?.olderFemale??null,'pessoas','2022','ibge'),
+    indicator('homens_idosos_60mais','Homens com 60 anos ou mais',ageSex?.olderMale??null,'pessoas','2022','ibge'),
+    indicator('mulheres_entre_idosos_pct','Participação de mulheres entre pessoas 60+',ageSex&&ageSex.older>0?within(100*ageSex.olderFemale/ageSex.older,0,100):null,'%','2022','ibge','Denominador: população residente de 60 anos ou mais no Censo 2022.'),
+    indicator('jovens_mulheres_15_29','Mulheres de 15 a 29 anos',ageSex?.youthFemale??null,'pessoas','2022','ibge','Recorte etário por sexo do Censo 2022, sem inferência de vulnerabilidade.'),
+    indicator('jovens_homens_15_29','Homens de 15 a 29 anos',ageSex?.youthMale??null,'pessoas','2022','ibge'),
     indicator('jovens_15_29', 'Pessoas de 15 a 29 anos · Censo', validYoung, 'pessoas', '2022', 'ibge', 'Soma das faixas 15–19, 20–24 e 25–29 anos no Censo 2022.'),
     indicator('jovens_15_29_pct', 'Participação dos jovens de 15 a 29 anos', validYoung !== null && population > 0 ? within(100*validYoung/population,0,100) : null, '%', '2022', 'ibge', 'Percentual sobre a população residente censitária, não sobre estimativa populacional.'),
     indicator('jovens_15_19', 'Adolescentes e jovens de 15 a 19 anos', age.size===3?age.get('93086'):null, 'pessoas','2022','ibge'),
@@ -145,6 +193,8 @@ async function getDiagnosis(code) {
   const modules = [
     {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
     {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
     {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
     {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
     {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
@@ -193,4 +243,5 @@ module.exports = async function handler(req,res) {
   }
 };
 module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
 module.exports.SOURCES = SOURCES;

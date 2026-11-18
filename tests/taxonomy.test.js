@@ -15,7 +15,7 @@ test('6 grupos temáticos e 6 públicos, únicos e corretamente rotulados',()=>{
  assert.equal(themes.length,6);
  assert.equal(audiences.length,6);
  assert.deepEqual(themes.map(x=>x.name),['Demografia','Socioeducação','SUAS','Trabalho e Renda','Justiça Climática','Socioaprendizagem']);
- assert.deepEqual(audiences.map(x=>x.name),['POP Rua','Juventude','Pessoas Idosas','LGBTQIAPN+','Mulheres','Medida Socioeducativa']);
+ assert.deepEqual(audiences.map(x=>x.name),['POP Rua','Juventude','Pessoas Idosas','LGBTQIAPN+','Mulheres','MSE']);
  assert.equal(new Set([...themes,...audiences].map(x=>x.id)).size,12);
  for(const group of [...themes,...audiences]){
   assert.ok(group.description.length>30);
@@ -23,8 +23,8 @@ test('6 grupos temáticos e 6 públicos, únicos e corretamente rotulados',()=>{
   for(const p of group.pending)assert.match(p.url,/^https:\/\//);
  }
 });
-test('todos os 29 indicadores atuais continuam alcançáveis sem informação fabricada',()=>{
- assert.equal(liveIds.length,29);
+test('todos os 39 indicadores atuais continuam alcançáveis sem informação fabricada',()=>{
+ assert.equal(liveIds.length,39);
  const reachable=new Set(themes.flatMap(x=>[...x.ids,...(x.contextIds||[])]));
  for(const id of liveIds)assert.ok(reachable.has(id),id+' perdido da taxonomia');
  for(const g of [...themes,...audiences])for(const id of [...g.ids,...(g.contextIds||[])])assert.ok(liveIds.includes(id),id+' não existe na API');
@@ -35,7 +35,7 @@ test('todos os 29 indicadores atuais continuam alcançáveis sem informação fa
  assert.equal(audiences.find(x=>x.id==='socioeducativa').ids.length,0);
 });
 test('layout compacto mantém navegação acessível e controles ativos',()=>{
- for(const id of ['themeTabs','audienceTabs','activePanel','featuredMetrics','groupTitle','groupDescription','groupStatus','indicatorList','indicatorCount','showAllBtn','groupGaps','coverage','coverageBar','moduleList','pdfTop','pdfBottom'])assert.ok(html.includes('id="'+id+'"'),id+' ausente');
+ for(const id of ['switchThemes','switchAudiences','activeTabs','integrityDisclosure','activePanel','featuredMetrics','groupTitle','groupDescription','groupStatus','indicatorList','indicatorCount','showAllBtn','groupGaps','coverage','coverageBar','moduleList','pdfTop','pdfBottom'])assert.ok(html.includes('id="'+id+'"'),id+' ausente');
  assert.ok(html.indexOf('taxonomy.js')<html.indexOf('app.js'));
  assert.match(html,/class="hero hero-compact"/);
  assert.match(html,/class="rail-brand"/);

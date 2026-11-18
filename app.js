@@ -14,7 +14,8 @@ function createTab(item,kind){
  const button=document.createElement('button');
  button.type='button';button.className='dashboard-tab';
  button.dataset.group=item.id;button.dataset.kind=kind;
- button.setAttribute('aria-label',(kind==='themes'?'Eixo temático: ':'Público: ')+item.name);
+ button.setAttribute('aria-label',(kind==='themes'?'Eixo temático: ':'Público: ')+(item.name==='MSE'?'MSE — Medida Socioeducativa':item.name));
+ if(item.name==='MSE')button.title='MSE — Medida Socioeducativa';
  button.setAttribute('aria-controls','activePanel');
  const svg=document.createElementNS(SVGNS,'svg');
  svg.setAttribute('class','tab-icon');svg.setAttribute('aria-hidden','true');svg.setAttribute('viewBox','0 0 24 24');
@@ -30,24 +31,39 @@ function createTab(item,kind){
  return button;
 }
 function initTabs(){
- for(const [kind,selector] of [['themes','#themeTabs'],['audiences','#audienceTabs']]){
-  const parent=qs(selector);if(!parent)return;
-  parent.replaceChildren(...TAXONOMY[kind].map(item=>createTab(item,kind)));
- }
+ qs('#switchThemes').addEventListener('click',()=>switchMode('themes'));
+ qs('#switchAudiences').addEventListener('click',()=>switchMode('audiences'));
  updateTabStates();
 }
+function switchMode(kind){
+ if(!['themes','audiences'].includes(kind)||state.activeKind===kind)return;
+ state.activeKind=kind;
+ state.activeId=kind==='themes'?'demografia':'juventude';
+ state.expanded=false;
+ qs('#activeTabs').dataset.kind='';
+ drawPanel(state.data);
+}
 function updateTabStates(){
- for(const kind of ['themes','audiences']){
-  const ids=TAXONOMY[kind];
-  const container=qs(kind==='themes'?'#themeTabs':'#audienceTabs');if(!container)return;
-  for(const [i,button] of [...container.children].entries()){
-   const active=kind===state.activeKind&&ids[i].id===state.activeId;
-   button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));
-   const vals=state.data?ids[i].ids.map(id=>state.data.indicators.find(v=>v.id===id)).filter(Boolean):[];
-   const ok=vals.filter(v=>v.status==='verificado'&&v.value!==null).length;
-   button.querySelector('.tab-count').textContent=!state.data?'—':ids[i].ids.length===0?'Em integração':ok+'/'+ids[i].ids.length;
-  }
+ const host=qs('#activeTabs');
+ const kind=state.activeKind;
+ const items=TAXONOMY[kind];
+ if(host.dataset.kind!==kind){
+  host.replaceChildren(...items.map(item=>createTab(item,kind)));
+  host.dataset.kind=kind;
  }
+ for(const [i,button] of [...host.children].entries()){
+  const active=items[i].id===state.activeId;
+  button.classList.toggle('is-active',active);
+  button.setAttribute('aria-pressed',String(active));
+  const values=state.data?items[i].ids.map(id=>state.data.indicators.find(v=>v.id===id)).filter(Boolean):[];
+  const count=values.filter(v=>v.status==='verificado'&&v.value!==null).length;
+  button.querySelector('.tab-count').textContent=!state.data?'—':items[i].ids.length===0?'Pendente':count+'/'+items[i].ids.length;
+ }
+ for(const [selector,enabled] of [['#switchThemes',kind==='themes'],['#switchAudiences',kind==='audiences']]){
+  const button=qs(selector);
+  button.classList.toggle('is-active',enabled);button.setAttribute('aria-pressed',String(enabled));
+ }
+ qs('#navCaption').textContent=kind==='themes'?'6 eixos':'6 públicos';
 }
 function appendIndicatorLine(container,item,context=false){
  const line=document.createElement('div');
