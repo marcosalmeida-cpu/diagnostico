@@ -95,7 +95,7 @@ function drawPanel(d){
  if(!all.length)list.append(createText('div','Não há indicadores diretos integrados neste recorte. Consulte as bases em validação ao lado.','empty'));
  const context=(group.contextIds||[]).map(id=>d?.indicators.find(x=>x.id===id)).filter(x=>x&&x.status==='verificado');
  if(context.length){
-  list.append(createText('p','Contexto geral do município — não mede diretamente este público','context-heading'));
+  list.append(createText('p',state.activeKind==='themes'?'Contexto transversal do território — não mede este eixo diretamente':'Contexto geral do município — não mede diretamente este público','context-heading'));
   for(const item of context)appendIndicatorLine(list,item,true);
  }
  const show=qs('#showAllBtn');show.hidden=all.length<=6;
