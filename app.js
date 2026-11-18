@@ -1,4 +1,7 @@
 'use strict';
+// A versão premium é padrão. A ultracompacta é comparável sem mudar de domínio ou dados.
+const navStyle = new URLSearchParams(window.location.search).get('barra') === 'ultra' ? 'ultra' : 'premium';
+document.documentElement.dataset.navStyle=navStyle;
 const qs = s=>document.querySelector(s);
 const state={selected:null,data:null,analysis:null,searchController:null,activeKind:'themes',activeId:'demografia',expanded:false};
 const TAXONOMY=window.DIAGNOSTICO_TAXONOMY;
