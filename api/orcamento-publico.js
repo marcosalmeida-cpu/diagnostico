@@ -1,9 +1,9 @@
 'use strict';
 // DCA Anexos I-C, I-D e I-E / SICONFI: funções e subfunções legalmente
 // identificadas, sem extrapolar rubricas de fundos/programas específicos.
-const URL='https://apidatalake.tesouro.gov.br/ords/siconfi/tt/dca';
+const ROOT='https://apidatalake.tesouro.gov.br/ords/siconfi/tt/dca';
 async function fetchDca(code,year,annex){
- const u=new URL(URL);
+ const u=new URL(ROOT);
  u.searchParams.set('an_exercicio',String(year));
  u.searchParams.set('no_anexo','DCA-Anexo I-'+annex);
  u.searchParams.set('id_ente',code);
