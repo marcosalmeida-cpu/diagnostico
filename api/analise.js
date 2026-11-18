@@ -31,6 +31,11 @@ function factualAnalysis(d) {
   const waterWithout=find('saneamento_agua_sem_ligacao_pct'), sewageConnected=find('saneamento_esgoto_rede_fossa_pct');
   if(waterWithout&&sewageConnected)
    facts.push('O Censo 2022 indica '+n.format(waterWithout.value)+'% dos domicílios particulares permanentes ocupados sem ligação à rede geral de água e '+n.format(sewageConnected.value)+'% com esgotamento em rede geral/pluvial ou fossa ligada à rede. Esses dados caracterizam infraestrutura domiciliar histórica, não medem diretamente exposição climática, potabilidade ou tratamento de esgoto.');
+  const cagedAdm=find('caged_admissoes_202609'),cagedDes=find('caged_desligamentos_202609'),cagedSaldo=find('caged_saldo_202609');
+  if(cagedAdm&&cagedDes&&cagedSaldo)
+   facts.push('Em setembro de 2026, a movimentação formal do Novo Caged ajustado para o município teve '+n.format(cagedAdm.value)+' admissões, '+n.format(cagedDes.value)+' desligamentos e saldo de '+n.format(cagedSaldo.value)+' vínculos. Isso não corresponde ao total de oportunidades atualmente abertas nem ao estoque de empregos.');
+  const cagedSal=find('caged_salario_admissao_202609');
+  if(cagedSal)facts.push('O salário médio nominal de admissão em setembro de 2026 foi de R$ '+new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(cagedSal.value)+'; não equivale ao salário médio de todos os empregados.');
   const quota=find('mte_potencial_cota');
   if(quota)facts.push('A base MTE/SIT (07/2026) registra potencial de cota de '+n.format(quota.value)+' aprendizes. Esse número representa potencial normativo e não deve ser chamado de oportunidades abertas, contratações ou vagas disponibilizadas.');
   const sectors=[['comércio','mte_cota_comercio'],['serviços','mte_cota_servicos'],['indústria','mte_cota_industria'],['agricultura','mte_cota_agricultura'],['transportes','mte_cota_transportes'],['outros setores','mte_cota_outros']].map(([label,id])=>({label,value:find(id)?.value})).filter(x=>Number.isFinite(x.value));
