@@ -64,6 +64,11 @@ function text(page,string,x,y,style) {
 }
 function rule(page,y,x=42,w=511){page.drawLine({start:{x,y},end:{x:x+w,y},thickness:1,color:COLORS.line})}
 function sectionOf(id){
+ if(id.startsWith('orcamento_v5_'))return 'ORÇAMENTO PÚBLICO MUNICIPAL - SICONFI/DCA';
+ if(id.startsWith('cadunico_'))return 'CADASTRO ÚNICO - INDICADORES MUNICIPAIS';
+ if(id.startsWith('suas_bpc_')||id.startsWith('suas_bolsa_'))return 'BENEFÍCIOS SOCIAIS - CGU';
+ if(id.startsWith('atlas_'))return 'ATLAS BRASIL/PNUD - INDICADORES HISTÓRICOS';
+ if(id.startsWith('mse_sinase_'))return 'MEDIDAS SOCIOEDUCATIVAS - SINASE';
  if(id.startsWith('contexto_uf_'))return 'CONTEXTO MACROECONÔMICO ESTADUAL - PNAD';
  if(id.startsWith('economia_setor_')||id==='economia_emprego_assalariado_total')return 'ESTRUTURA SETORIAL DO EMPREGO ASSALARIADO - CEMPRE';
  if(id.startsWith('economia_pib_'))return 'ECONOMIA MUNICIPAL - PIB NOMINAL';
@@ -100,7 +105,7 @@ function makePage(pdf,fonts,title,subtitle){
 function footer(p,i,total,fonts){
  brandStripe(p,0,4);
  rule(p,48);
- const left='Diagnóstico Territorial Integrado  |  Rede Cidadã  |  HOMOLOGAÇÃO';
+ const left='Diagnóstico Territorial Integrado  |  Rede Cidadã  |  Fontes oficiais';
  p.drawText(clean(left),{x:42,y:33,size:7.5,font:fonts.reg,color:COLORS.gray});
  p.drawText(i+'/'+total,{x:522,y:33,size:8,font:fonts.bold,color:COLORS.blue});
 }

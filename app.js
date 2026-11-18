@@ -36,12 +36,13 @@ function createTab(item,kind){
 function initTabs(){
  qs('#switchThemes').addEventListener('click',()=>switchMode('themes'));
  qs('#switchAudiences').addEventListener('click',()=>switchMode('audiences'));
+ qs('#switchBudget').addEventListener('click',()=>switchMode('budgets'));
  updateTabStates();
 }
 function switchMode(kind){
- if(!['themes','audiences'].includes(kind)||state.activeKind===kind)return;
+ if(!['themes','audiences','budgets'].includes(kind)||state.activeKind===kind)return;
  state.activeKind=kind;
- state.activeId=kind==='themes'?'demografia':'juventude';
+ state.activeId=kind==='themes'?'demografia':kind==='audiences'?'juventude':'fiscal';
  state.expanded=false;
  qs('#activeTabs').dataset.kind='';
  drawPanel(state.data);
@@ -62,11 +63,11 @@ function updateTabStates(){
   const count=values.filter(v=>v.status==='verificado'&&v.value!==null).length;
   button.querySelector('.tab-count').textContent=!state.data?'—':items[i].ids.length===0?'Pendente':count+'/'+values.length;
  }
- for(const [selector,enabled] of [['#switchThemes',kind==='themes'],['#switchAudiences',kind==='audiences']]){
+ for(const [selector,enabled] of [['#switchThemes',kind==='themes'],['#switchAudiences',kind==='audiences'],['#switchBudget',kind==='budgets']]){
   const button=qs(selector);
   button.classList.toggle('is-active',enabled);button.setAttribute('aria-pressed',String(enabled));
  }
- qs('#navCaption').textContent=kind==='themes'?'6 eixos':'6 públicos';
+ qs('#navCaption').textContent=kind==='themes'?'6 eixos':kind==='audiences'?'6 públicos':'3 visões orçamentárias';
 }
 function appendIndicatorLine(container,item,context=false){
  const line=document.createElement('div');
@@ -83,7 +84,7 @@ function drawPanel(d){
  const group=(TAXONOMY[state.activeKind]||[]).find(g=>g.id===state.activeId)||TAXONOMY.themes[0];
  if(!group)return;
  updateTabStates();
- qs('#groupKind').textContent=state.activeKind==='themes'?'EIXO TEMÁTICO':'PÚBLICO PRIORITÁRIO';
+ qs('#groupKind').textContent=state.activeKind==='themes'?'EIXO TEMÁTICO':state.activeKind==='audiences'?'PÚBLICO PRIORITÁRIO':'ORÇAMENTO PÚBLICO';
  qs('#groupTitle').textContent=group.name;
  qs('#groupDescription').textContent=group.description;
  const all=group.ids.map(id=>d?.indicators?.find(v=>v.id===id)).filter(Boolean);
@@ -144,7 +145,7 @@ function fmt(ind){
  const suffix=ind.unit==='km²'?' km²':ind.unit==='hab./km²'?' hab./km²':ind.unit==='%'?'%':ind.unit==='postos potenciais'?' postos potenciais':'';
  return nf.format(ind.value)+suffix;
 }
-function enableReady(on){qs('#analysisBtn').disabled=!on;qs('#pdfTop').disabled=!on;qs('#pdfBottom').disabled=!on;}
+function enableReady(on){qs('#analysisBtn').disabled=!on;qs('#pdfBottom').disabled=!on;}
 function select(m){
   state.selected=m;state.data=null;state.analysis=null;
   drawPanel(null);
@@ -238,7 +239,7 @@ qs('#analysisBtn').onclick=async()=>{
 };
 async function downloadPdf(){
  if(!state.data)return;
- const buttons=[qs('#pdfTop'),qs('#pdfBottom')];buttons.forEach(x=>x.disabled=true);
+ const buttons=[qs('#pdfBottom')];buttons.forEach(x=>x.disabled=true);
  status('Gerando PDF institucional a partir de nova consulta oficial. Não serão utilizados números manipulados no navegador.');
  try{
   const r=await fetch('/api/relatorio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ibge:state.data.municipio.codigoIBGE})});
@@ -251,7 +252,24 @@ async function downloadPdf(){
  }catch(e){status(e.message,true)}
  finally{buttons.forEach(x=>x.disabled=false)}
 }
-qs('#pdfTop').onclick=downloadPdf;qs('#pdfBottom').onclick=downloadPdf;
+qs('#pdfBottom').onclick=downloadPdf;
+async function loadNationalRates(){
+ const targets=[['desocupacao_br','#rateUnemployment','#rateUnemploymentPeriod'],['informalidade_br','#rateInformality','#rateInformalityPeriod'],['pobreza_br','#ratePoverty','#ratePovertyPeriod']];
+ try{
+  const response=await fetch('/api/indicadores-nacionais',{cache:'no-store'});
+  if(!response.ok)throw Error('Indicadores nacionais indisponíveis');
+  const data=await response.json(),rows=Array.isArray(data.items)?data.items:[];
+  for(const [id,numberId,periodId] of targets){
+   const item=rows.find(x=>x.id===id);
+   qs(numberId).textContent=item&&Number.isFinite(item.value)?new Intl.NumberFormat('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}).format(item.value)+'%':'—';
+   qs(periodId).textContent=item&&item.period?(id==='pobreza_br'?item.period+' · US$ 8,30 PPC':item.period+' · IBGE'):'Fonte indisponível';
+   if(item)qs(numberId).parentElement.title=item.note+' Fonte: '+item.source+'. Período: '+(item.period||'não publicado');
+  }
+ }catch(_e){for(const [id,n,p] of targets){qs(n).textContent='—';qs(p).textContent='Consulta indisponível';}}
+}
+loadNationalRates();
+setInterval(loadNationalRates,60*60*1000);
+
 const sections=document.querySelectorAll('main section[id]');
 const nav=document.querySelectorAll('.side-nav a');
 if('IntersectionObserver' in window){

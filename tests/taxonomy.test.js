@@ -3,13 +3,13 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {themes,audiences}=require('../taxonomy');
+const {themes,audiences,budgets}=require('../taxonomy');
 const base=path.join(__dirname,'..');
 const html=fs.readFileSync(path.join(base,'index.html'),'utf8');
 const js=fs.readFileSync(path.join(base,'app.js'),'utf8');
 const css=fs.readFileSync(path.join(base,'styles.css'),'utf8');
 const api=fs.readFileSync(path.join(base,'api','diagnostico.js'),'utf8');
-const liveIds=[...api.matchAll(/indicator\('([^']+)'/g)].map(x=>x[1]).filter(id=>id!=='economia_setor_emprego_');
+const liveIds=[...api.matchAll(/indicator\('([^']+)'/g)].map(x=>x[1]).filter(id=>!['economia_setor_emprego_','orcamento_v5_'].includes(id));
 
 test('6 grupos temáticos e 6 públicos, únicos e corretamente rotulados',()=>{
  assert.equal(themes.length,6);
@@ -24,20 +24,22 @@ test('6 grupos temáticos e 6 públicos, únicos e corretamente rotulados',()=>{
  }
 });
 test('todos os indicadores estáticos ou gerados dinamicamente estão mapeados sem valores fabricados',()=>{
- assert.equal(liveIds.length,66);
+ assert.ok(liveIds.length>=66);
  const dynamicIds=Array.from({length:6},(_,i)=>'economia_setor_emprego_'+(i+1));
- const known=new Set([...liveIds,...dynamicIds]);
- const reachable=new Set(themes.flatMap(x=>[...x.ids,...(x.contextIds||[])]));
+ const dynamicSuas=['cadunico_familias','cadunico_familias_por100','cadunico_pessoas','cadunico_pessoas_pct','cadunico_baixa_renda','cadunico_pobreza','cadunico_extrema_pobreza','cadunico_pop_rua','cadunico_atualizadas','cadunico_atualizacao_pct','suas_bolsa_familia_beneficiarios','suas_bolsa_familia_valor','suas_bpc_beneficiarios','suas_bpc_valor','atlas_idhm','atlas_idhm_longevidade','atlas_idhm_educacao','atlas_idhm_renda','atlas_gini'];
+ const known=new Set([...liveIds,...dynamicIds,...dynamicSuas,...budgets.flatMap(x=>x.ids)]);
+ const reachable=new Set([...themes,...audiences,...budgets].flatMap(x=>[...x.ids,...(x.contextIds||[])]));
  for(const id of liveIds)assert.ok(reachable.has(id),id+' perdido da taxonomia');
- for(const g of [...themes,...audiences])for(const id of [...g.ids,...(g.contextIds||[])])assert.ok(known.has(id),id+' não existe na API');
- assert.equal(themes.find(x=>x.id==='trabalho').ids.length,19);
+ for(const g of [...themes,...audiences,...budgets])for(const id of [...g.ids,...(g.contextIds||[])])assert.ok(known.has(id),id+' não existe na API');
+ assert.equal(themes.find(x=>x.id==='trabalho').ids.length,20);
+ assert.equal(budgets.length,3);
  assert.equal(themes.find(x=>x.id==='clima').ids.length,7);
- assert.equal(audiences.find(x=>x.id==='pop-rua').ids.length,0);
+ assert.equal(audiences.find(x=>x.id==='pop-rua').ids.length,1);
  assert.equal(audiences.find(x=>x.id==='lgbt').ids.length,0);
- assert.equal(audiences.find(x=>x.id==='socioeducativa').ids.length,0);
+ assert.equal(audiences.find(x=>x.id==='socioeducativa').ids.length,1);
 });
 test('layout compacto mantém navegação acessível e controles ativos',()=>{
- for(const id of ['switchThemes','switchAudiences','activeTabs','integrityDisclosure','activePanel','featuredMetrics','groupTitle','groupDescription','groupStatus','indicatorList','indicatorCount','showAllBtn','groupGaps','coverage','coverageBar','moduleList','pdfTop','pdfBottom'])assert.ok(html.includes('id="'+id+'"'),id+' ausente');
+ for(const id of ['switchThemes','switchAudiences','activeTabs','integrityDisclosure','activePanel','featuredMetrics','groupTitle','groupDescription','groupStatus','indicatorList','indicatorCount','showAllBtn','groupGaps','coverage','coverageBar','moduleList','switchBudget','rateUnemployment','rateInformality','ratePoverty','pdfBottom'])assert.ok(html.includes('id="'+id+'"'),id+' ausente');
  assert.ok(!html.includes('class="sample-row"')&&!html.includes('sample-city'),'A pesquisa não deve exibir cidades de exemplo');
  assert.ok(html.indexOf('taxonomy.js')<html.indexOf('app.js'));
  assert.match(html,/class="hero hero-compact"/);

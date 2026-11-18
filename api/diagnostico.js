@@ -3,6 +3,8 @@
 const IBGE = 'https://servicodados.ibge.gov.br';
 const SICONFI = 'https://apidatalake.tesouro.gov.br';
 const {getCras}=require('./suas');
+const {getBudget,budgetLines}=require('./orcamento-publico');
+const {getBenefits}=require('./beneficios-cgu');
 const {getEconomia,getIvcad}=require('./dados-dinamicos');
 const {getByMunicipio:readCagedPE,SOURCE:CAGED_PE_SOURCE}=require('../data/caged2026pe');
 function readPotential2026(code){
@@ -29,6 +31,11 @@ const SOURCES = {
   ibge_esgoto: { name: 'IBGE/SIDRA · Censo 2022, esgotamento (6805)', url: 'https://sidra.ibge.gov.br/tabela/6805' },
   inep: { name: 'INEP · IDEB', url: 'https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/ideb/resultados' },
   mte: { name: 'MTE/SIT · Potencial de aprendizagem · 07/2026', url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/insercao-de-aprendiz-1/potencial_ead_julho-1.xlsx' },
+  mds_cadunico: {name:'MDS · Observatório do Cadastro Único, agregados municipais',url:'https://paineis.mds.gov.br/public/extensions/observatorio-do-cadastro-unico/index.html'},
+  cgu_beneficios: {name:'CGU · Portal da Transparência: PBF/BPC por município',url:'https://api.portaldatransparencia.gov.br/'},
+  tesouro_dca: {name:'STN/SICONFI · DCA, funções e subfunções',url:'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos'},
+  atlas_pnud: {name:'Atlas Brasil/PNUD · IDHM e indicadores históricos',url:'https://www.atlasbrasil.org.br/'},
+  sinase_mdhc: {name:'MDHC · Levantamentos do SINASE',url:'https://www.gov.br/mdh/pt-br/navegue-por-temas/crianca-e-adolescente/levantamentos-nacionais-do-sinase/levantamentos-nacionais'},
   suas: { name: 'MDS · Censo SUAS', url: 'https://www.gov.br/mds/pt-br/acoes-e-programas/suas/gestao-do-suas/vigilancia-socioassistencial-1/censo-suas' }
 };
 
@@ -164,7 +171,9 @@ async function getDiagnosis(code) {
     json(IBGE + '/api/v3/agregados/6803/periodos/2022/variaveis/381?localidades=N6[' + codigo + ']&classificacao=1821[72129,72144,72145,72153]'),
     json(IBGE + '/api/v3/agregados/6805/periodos/2022/variaveis/381?localidades=N6[' + codigo + ']&classificacao=11558[46292,46290,72110,72111,72112,72113,92858,72114,72115,92861]'),
     getEconomia(codigo,uf),
-    getIvcad(codigo,uf)
+    getIvcad(codigo,uf),
+    getBudget(codigo),
+    getBenefits(codigo)
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
@@ -189,6 +198,8 @@ async function getDiagnosis(code) {
   const learning=readPotential2026(codigo);
   const ivcad=results[11].status==='fulfilled'?results[11].value:null;
   const economic=results[10].status==='fulfilled'?results[10].value:{gdp:null,sectors:null,unemployment:null};
+  const budgetDetail=results[12].status==='fulfilled'?results[12].value:null;
+  const benefits=results[13].status==='fulfilled'?results[13].value:{configured:false,bolsa:null,bpc:null};
   const caged = uf==='PE' ? readCagedPE(codigo) : null;
   const sanitation=extractSaneamento(
     results[8].status==='fulfilled'?results[8].value:null,
@@ -244,6 +255,51 @@ async function getDiagnosis(code) {
     indicator('orcamento_educacao', 'Despesas liquidadas · Educação', budget?.education ?? null, 'R$', budget?.period ?? '—', 'tesouro'),
     indicator('orcamento_saude', 'Despesas liquidadas · Saúde', budget?.health ?? null, 'R$', budget?.period ?? '—', 'tesouro')
   ];
+  // Cadastro Único: campos previstos sem estimar valores enquanto não houver
+  // API pública agregada nacional autenticada/validada. Não interpretar ausência como zero.
+  for(const [id,label,unit] of [
+    ['cadunico_familias','Famílias inscritas no CadÚnico','famílias'],
+    ['cadunico_familias_por100','Famílias inscritas / 100 residentes','famílias/100 hab.'],
+    ['cadunico_pessoas','Pessoas inscritas no CadÚnico','pessoas'],
+    ['cadunico_pessoas_pct','Pessoas inscritas / total de habitantes','%'],
+    ['cadunico_baixa_renda','Famílias em baixa renda','famílias'],
+    ['cadunico_pobreza','Famílias em pobreza','famílias'],
+    ['cadunico_extrema_pobreza','Pessoas em extrema pobreza','pessoas'],
+    ['cadunico_pop_rua','Famílias em situação de rua','famílias'],
+    ['cadunico_atualizadas','Famílias com cadastro atualizado','famílias'],
+    ['cadunico_atualizacao_pct','Atualização cadastral / famílias inscritas','%']
+  ])data.push(indicator(id,label,null,unit,'—','mds_cadunico','Fonte pública agregada ainda sem API nacional aberta testada. Não estimar famílias a partir de pessoas, nem vice-versa.'));
+  for(const [id,label,entry,field,unit] of [
+    ['suas_bolsa_familia_beneficiarios','Bolsa Família · quantitativo publicado','bolsa','beneficiaries','beneficiários'],
+    ['suas_bolsa_familia_valor','Bolsa Família · valor mensal','bolsa','amount','R$'],
+    ['suas_bpc_beneficiarios','BPC · beneficiários no mês','bpc','beneficiaries','pessoas'],
+    ['suas_bpc_valor','BPC · valor mensal','bpc','amount','R$']
+  ]){
+   const row=benefits?.[entry]||null;
+   data.push(indicator(id,label,row?.[field]??null,unit,row?.period??'—','cgu_beneficios','Fonte CGU com autenticação no servidor. Quantidade mensal publicada não equivale necessariamente a pessoas únicas no ano.'));
+  }
+  const historic=[
+    ['atlas_idhm','IDHM municipal'],['atlas_idhm_educacao','IDHM Educação'],
+    ['atlas_idhm_renda','IDHM Renda'],['atlas_idhm_longevidade','IDHM Longevidade'],
+    ['atlas_gini','Desigualdade · índice Gini histórico']
+  ];
+  for(const [id,label] of historic)data.push(indicator(id,label,null,'índice (0–1)','2010','atlas_pnud','Atlas Brasil/PNUD: dados censitários 2010. A API municipal automática ainda não foi validada.'));
+  data.push(indicator('mse_sinase_municipio','Adolescentes em MSE no município',null,'pessoas','—','sinase_mdhc','SINASE tem levantamentos nacionais/estaduais, sem API municipal regular validada nesta integração.'));
+  const lines=budgetDetail?.entries||budgetLines.map(([id,label,code,note])=>({id,label,value:null,unit:'R$',period:'—',source:'tesouro_dca',note}));
+  const allBudget=[...lines,
+    {id:'pib_municipal',label:'PIB municipal (contexto, não receita fiscal)',value:economic.gdp?.pib??null,unit:'R$',period:economic.gdp?.year??'—',source:'ibge_pib',note:'PIB não representa dinheiro do orçamento municipal.'},
+    {id:'pib_percapita',label:'PIB per capita municipal · valor oficial',value:null,unit:'R$',period:'—',source:'ibge_pib',note:'Aguarda fonte com PIB e população do mesmo ano. Não combinar PIB 2023 com população de outro ano.'}
+  ];
+  for(const row of allBudget)data.push(indicator('orcamento_v5_'+row.id,row.label,row.value??null,row.unit||'R$',row.period||String(budgetDetail?.year||'—'),row.source||'tesouro_dca',row.note));
+  const fiscal=budgetDetail?.finances||null;
+  for(const [id,label,v,unit,note] of [
+    ['receita','Receita realizada líquida de deduções',fiscal?.revenue,'R$','DCA I-C; não equivale à Receita Corrente Líquida.'],
+    ['despesa','Despesa liquidada municipal',fiscal?.expenditure,'R$','DCA I-D; não equivale à despesa paga.'],
+    ['investimentos','Investimentos liquidados',fiscal?.investments,'R$','DCA I-D, grupo 4.4, quando identificável.'],
+    ['comprometimento','Despesa liquidada / receita realizada',fiscal?.expenditureShare,'%','Relação gerencial, não índice oficial de endividamento.'],
+    ['endividamento','Dívida Consolidada Líquida',null,'R$','Exige RGF Anexo 2: não inventar a partir das despesas da DCA.']
+  ])data.push(indicator('orcamento_v5_'+id,label,v??null,unit,fiscal?.year?String(fiscal.year):'—','tesouro_dca',note));
+
   // PIB e pessoal assalariado são dados municipais; taxas PNAD são CONTEXTO da UF.
   const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
   data.push(
@@ -301,7 +357,11 @@ async function getDiagnosis(code) {
     {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
     {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
     {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
-    {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'beneficios',name:'PBF/BPC · CGU por município',status:benefits.bolsa||benefits.bpc?'verificado':'nao_integrado',source:'cgu_beneficios',reason:benefits.configured?'Acesso autenticado, sem agregados atuais validados em uma ou mais séries.':'Necessita CGU_API_KEY configurada como segredo de servidor; sem chave, dados ficam indisponíveis.'},
+    {id:'orcamento_v5',name:'Orçamento por subfunção · SICONFI/DCA',status:budgetDetail?'verificado':'indisponivel',source:'tesouro_dca',reason:budgetDetail?'Dados anuais por função e subfunção. Fundos FIA, Idoso e FMAS não são individualizados pela DCA; proxies devidamente identificadas.':'Sem DCA validada nesta consulta.'},
+    {id:'atlas',name:'Atlas/PNUD · IDHM municipal histórico',status:'nao_integrado',source:'atlas_pnud',reason:'Os dados históricos 2010 são públicos, porém a API municipal oficial não foi validada nesta fase.'},
+    {id:'mse',name:'SINASE · medidas socioeducativas',status:'nao_integrado',source:'sinase_mdhc',reason:'Sem API pública municipal de MSE em meio aberto validada; dados estaduais não devem ser apresentados como municipais.'},
+        {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
     {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
   ];
   const valid = data.filter(d => d.status === 'verificado').length;

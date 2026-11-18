@@ -168,3 +168,48 @@ html[data-nav-style="ultra"] .active-panel {scroll-margin-top:52px;}
 @media (prefers-reduced-motion:reduce) {
  .premium-switch .switch-button,.dashboard-nav .premium-tabs .dashboard-tab {transition:none;}
 }
+
+/* V5 · Barra Premium B: Orçamento em vermelho Rede Cidadã, demais opções amarelas. */
+.premium-switch #switchBudget.is-active,
+.premium-switch #switchBudget:hover,
+.premium-switch #switchBudget.is-active:hover,
+html[data-nav-style="ultra"] .premium-switch #switchBudget.is-active,
+html[data-nav-style="ultra"] .premium-switch #switchBudget:hover {
+ background:#e12938;
+ border-color:#e12938;
+ color:#fff;
+ box-shadow:0 3px 11px rgba(148,25,39,.14);
+}
+.premium-switch #switchBudget:focus-visible {outline:2px solid #e12938;outline-offset:2px}
+.premium-switch #switchBudget.is-active .switch-icon,
+.premium-switch #switchBudget:hover .switch-icon{color:#fff}
+.national-rates{display:grid;grid-template-columns:repeat(3,minmax(100px,1fr));gap:7px;max-width:475px;flex:1;}
+.national-rate{display:flex;flex-direction:column;gap:2px;justify-content:center;padding:8px 12px;min-width:0;border:1px solid #e7edf4;border-radius:12px;background:#f6f8fc;text-decoration:none;transition:border-color .16s,background .16s;line-height:1.15}
+.national-rate:hover{border-color:#ffc000;background:#fff8df}
+.national-rate span{font-size:10px;font-weight:700;color:#5b6982;white-space:nowrap}
+.national-rate strong{font-size:19px;letter-spacing:-.045em;color:#0322d6;font-variant-numeric:tabular-nums}
+.national-rate small{font-size:8.5px;color:#697993;white-space:normal;line-height:1.2}
+@media(min-width:901px){
+ .topbar{position:sticky;top:0;z-index:40;padding-top:13px;padding-bottom:13px;min-height:93px;box-shadow:0 5px 17px rgba(2,16,44,.025)}
+ .dashboard-nav{top:93px}
+}
+@media(max-width:1100px){
+ .topbar h1{font-size:19px}
+ .national-rates{max-width:418px}
+ .national-rate{padding:7px 9px}
+ .national-rate strong{font-size:17px}
+}
+@media(max-width:900px){
+ .topbar{flex-wrap:wrap;gap:11px}
+ .national-rates{max-width:none;width:100%;flex-basis:100%}
+ .national-rate{min-height:61px}
+}
+@media(max-width:530px){
+ .national-rates{gap:5px}
+ .national-rate{padding:8px 7px;border-radius:9px}
+ .national-rate span{font-size:9px}
+ .national-rate strong{font-size:16px}
+ .national-rate small{font-size:8px}
+ .premium-switch #switchBudget{min-width:40px}
+ .dashboard-nav.premium-nav{gap:4px}
+}

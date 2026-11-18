@@ -39,6 +39,25 @@ function factualAnalysis(d){
  social+='A análise de proteção social exige cruzar perfis do Cadastro Único, presença e capacidade dos serviços, rotas de acesso e entrevistas com profissionais e usuários, evitando identificar demanda apenas pela contagem de equipamentos.';
  paragraphs.push(social);
  if(water!==null||sewer!==null)paragraphs.push('DIMENSÃO SOCIOAMBIENTAL — '+(water!==null?fmtN(water)+'% dos domicílios do Censo 2022 não tinham ligação à rede geral de água. ':'')+(sewer!==null?fmtN(sewer)+'% registravam fossa rudimentar ou buraco. ':'')+'São sinais objetivos para investigar desigualdades territoriais de infraestrutura, mas não medem risco de inundação, potabilidade ou cobertura atual de saneamento. A definição de intervenção requer georreferenciamento intraurbano, mapas de ameaças e comparação com dados recentes da defesa civil.');
+ const fiscalYear=find('orcamento_v5_assistencia_total')?.period||null;
+ const childBudget=value('orcamento_v5_crianca_adolescente'),elderBudget=value('orcamento_v5_pessoas_idosas');
+ const totalBudget=value('orcamento_v5_assistencia_total'),envBudget=value('orcamento_v5_socioambiental'),revenue=value('orcamento_v5_receita');
+ const bf=value('suas_bolsa_familia_beneficiarios'),bpc=value('suas_bpc_beneficiarios');
+ let budgetRead='CAPACIDADE FISCAL E APLICAÇÃO DE RECURSOS — ';
+ if(totalBudget!==null){
+  budgetRead+='A DCA/SICONFI de '+(fiscalYear||'competência validada')+' registrou '+money(totalBudget)+' de despesas liquidadas na função Assistência Social. ';
+  if(childBudget!==null)budgetRead+='Na subfunção 08.243 (criança e adolescente) constam '+money(childBudget)+'. ';
+  if(elderBudget!==null)budgetRead+='Na subfunção 08.241 (pessoa idosa) constam '+money(elderBudget)+'. ';
+  if(envBudget!==null)budgetRead+='Na função Gestão Ambiental, '+money(envBudget)+'. ';
+  budgetRead+='São despesas por classificação contábil, NÃO recursos livres para convênios nem valores dos fundos FIA, FMAS ou Idoso. ';
+ }else budgetRead+='A execução da DCA por funções/subfunções não foi confirmada nesta consulta; não se podem presumir disponibilidades orçamentárias. ';
+ if(revenue!==null)budgetRead+='A receita orçamentária realizada após deduções identificadas foi '+money(revenue)+' na mesma declaração, valor distinto da receita corrente líquida e da capacidade de contratação. ';
+ budgetRead+='Avaliar LOA, Plano Plurianual, QDD, fontes de recurso, saldos de fundos, empenhos e critérios do conselho antes de propor custeio ou contrapartida.';
+ paragraphs.push(budgetRead);
+ if(bf!==null||bpc!==null)paragraphs.push('BENEFÍCIOS SOCIAIS — A CGU disponibilizou quantitativos municipais agregados de '+(bf!==null?fmtN(bf)+' registros do Bolsa Família':'Bolsa Família indisponível')+' e '+(bpc!==null?fmtN(bpc)+' beneficiários do BPC':'BPC indisponível')+'. Esses totais têm competência mensal própria, não identificam famílias únicas atendidas por programas de diferentes objetivos e não permitem inferir causalidade entre transferência de renda e outros resultados.');
+ else paragraphs.push('BENEFÍCIOS E CADASTRO ÚNICO — A API municipal de Bolsa Família/BPC depende de chave institucional CGU e sua ausência não equivale a ausência de beneficiários. As quantidades de famílias/pessoas no CadÚnico, atualização cadastral, pobreza e situação de rua são disponibilizadas em painéis oficiais, mas não possuem nesta instalação uma extração nacional automática validada. Essas lacunas impedem quantificar com rigor o público social atendível.');
+ paragraphs.push('MEDIDAS SOCIOEDUCATIVAS E DESENVOLVIMENTO HUMANO — O Atlas Brasil/PNUD permite analisar o IDHM e componentes historicamente, mas seus indicadores municipais de base censitária 2010 não devem ser apresentados como realidade de 2026. Levantamentos do SINASE têm abrangências distintas e não justificam imputar ao município números estaduais de adolescentes em MSE. Essas dimensões exigem bases locais e comprovação de atualização.');
+
  const recommend=[];
  recommend.push({title:'Hipótese A — inserção juvenil no mundo do trabalho',priority:young!==null&&quota!==null?'Prioridade para validação':'Condicional',reason:'Investigar oferta de socioaprendizagem e formação profissional articulada à escola e às empresas. Evidências: estrutura etária, potencial de cota normativo e ramos empregadores. Verificar demanda real, horários, aprendizes em execução, transporte, permanência, cotas efetivamente ocupadas e escuta de jovens antes de dimensionar metas.'});
  recommend.push({title:'Hipótese B — trajetórias educacionais e qualificação',priority:low!==null?'Prioridade para validação':'Condicional',reason:'Confrontar escolaridade censitária e perfil do emprego assalariado com oferta de EJA, educação profissional e necessidades das organizações. Definir indicadores de conclusão, permanência, encaminhamento e melhoria de competências, sem imputar desocupação municipal.'});
