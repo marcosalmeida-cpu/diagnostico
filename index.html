@@ -49,7 +49,11 @@
  <div class="main">
   <header class="topbar">
     <div><div class="eyebrow">REDE CIDADÃ / GESTÃO ESTRATÉGICA</div><h1>Diagnóstico Territorial <span>Integrado</span></h1></div>
-    <div class="top-actions"><span class="chip chip-muted"><i></i> Homologação</span><button class="btn btn-dark" id="pdfTop" disabled type="button">↓ Exportar relatório PDF</button></div>
+    <div class="national-rates" aria-label="Indicadores nacionais atualizados pelas fontes públicas" id="nationalRates">
+      <a class="national-rate" href="https://sidra.ibge.gov.br/tabela/4094" target="_blank" rel="noopener noreferrer" title="IBGE · PNAD Contínua; taxa de desocupação do Brasil"><span>Desocupação</span><strong id="rateUnemployment">—</strong><small id="rateUnemploymentPeriod">Consultando IBGE...</small></a>
+      <a class="national-rate" href="https://sidra.ibge.gov.br/tabela/8529" target="_blank" rel="noopener noreferrer" title="IBGE · PNAD Contínua; taxa de informalidade do Brasil"><span>Informalidade</span><strong id="rateInformality">—</strong><small id="rateInformalityPeriod">Consultando IBGE...</small></a>
+      <a class="national-rate" href="https://data.worldbank.org/indicator/SI.POV.UMIC?locations=BR" target="_blank" rel="noopener noreferrer" title="Banco Mundial: pobreza abaixo de US$ 8,30 por dia (PPC 2021)"><span>Pobreza</span><strong id="ratePoverty">—</strong><small id="ratePovertyPeriod">Banco Mundial · US$ 8,30 PPC</small></a>
+     </div>
   </header>
   <main>
    <section class="hero hero-compact" id="visao" aria-label="Pesquisa do território">
@@ -68,13 +72,14 @@
        <div class="signal-core"><img src="/assets/rede-cidada-rostinho.svg" alt=""></div>
      </div>
    </section>
-   <div class="notice" role="status" aria-live="polite" id="globalNotice"><span class="notice-icon">i</span><span>Ambiente de homologação: indicadores com fonte e competência verificados. Dados ausentes nunca são tratados como zero.</span></div>
+   <div class="notice" role="status" aria-live="polite" id="globalNotice"><span class="notice-icon">i</span><span>Indicadores com fonte e competência identificadas. Dados ausentes ou sem API pública validada nunca são tratados como zero.</span></div>
    <section class="section compact-section" id="indicadores">
      <div class="section-heading compact-heading"><div><span class="overline blue">DIAGNÓSTICO TEMÁTICO E PÚBLICOS</span><h2>Panorama do território</h2><p id="territoryCaption">Selecione um município para explorar os indicadores disponíveis.</p></div><div class="stamp" id="lastUpdated">AGUARDANDO CONSULTA</div></div>
      <div class="dashboard-nav premium-nav" aria-label="Navegação temática compacta">
        <div class="premium-switch" role="group" aria-label="Tipo de recorte">
          <button type="button" id="switchThemes" class="switch-button is-active" aria-label="Eixos temáticos" title="Eixos temáticos" aria-pressed="true"><svg class="switch-icon" aria-hidden="true"><use href="#ic-data"/></svg>Temas</button>
          <button type="button" id="switchAudiences" class="switch-button" aria-label="Públicos prioritários" title="Públicos prioritários" aria-pressed="false"><svg class="switch-icon" aria-hidden="true"><use href="#ic-people"/></svg>Públicos</button>
+         <button type="button" id="switchBudget" class="switch-button budget-switch" aria-label="Orçamento público" title="Orçamento público" aria-pressed="false"><svg class="switch-icon" aria-hidden="true"><use href="#ic-data"/></svg>Orçamento</button>
        </div>
        <div class="premium-divider" aria-hidden="true"></div>
        <div id="activeTabs" class="dashboard-tabs premium-tabs" role="group" aria-label="Selecione um recorte territorial"></div>
@@ -113,7 +118,7 @@
    </section>
    <section class="report-cta"><div><span class="overline">RELATÓRIO TÉCNICO</span><h2>Do território para a decisão.</h2><p>Exporte o conjunto de indicadores demonstrativos, fontes, limitações e leitura técnica para um PDF diagramado.</p></div><button class="btn btn-lime" id="pdfBottom" disabled>↓ Gerar relatório PDF</button></section>
   </main>
-  <footer>© Rede Cidadã · Diagnóstico Territorial Integrado <span>Homologação V2.0 · Dados públicos · Uso técnico sujeito à validação</span></footer>
+  <footer>© Rede Cidadã · Diagnóstico Territorial Integrado <span>Dados públicos · Fontes auditáveis · Uso técnico sujeito à validação</span></footer>
  </div>
 </div>
 <nav class="mobile-tabs" aria-label="Navegação móvel"><a href="#visao" aria-label="Início"><svg class="rail-icon" aria-hidden="true"><use href="#ic-overview"/></svg><small>Início</small></a><a href="#indicadores" aria-label="Indicadores"><svg class="rail-icon" aria-hidden="true"><use href="#ic-data"/></svg><small>Dados</small></a><a href="#analise" aria-label="Análise"><svg class="rail-icon" aria-hidden="true"><use href="#ic-analysis"/></svg><small>Análise</small></a><a href="#fontes" aria-label="Fontes"><svg class="rail-icon" aria-hidden="true"><use href="#ic-sources"/></svg><small>Fontes</small></a></nav>
