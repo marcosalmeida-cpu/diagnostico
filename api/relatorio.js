@@ -64,6 +64,9 @@ function text(page,string,x,y,style) {
 }
 function rule(page,y,x=42,w=511){page.drawLine({start:{x,y},end:{x:x+w,y},thickness:1,color:COLORS.line})}
 function sectionOf(id){
+ if(id.startsWith('contexto_uf_'))return 'CONTEXTO MACROECONÔMICO ESTADUAL - PNAD';
+ if(id.startsWith('economia_setor_')||id==='economia_emprego_assalariado_total')return 'ESTRUTURA SETORIAL DO EMPREGO ASSALARIADO - CEMPRE';
+ if(id.startsWith('economia_pib_'))return 'ECONOMIA MUNICIPAL - PIB NOMINAL';
  if(id.startsWith('caged_'))return 'TRABALHO FORMAL - NOVO CAGED 09/2026 (PE)';
  if(id.startsWith('ivcad_'))return 'IVCAD 2026 - VULNERABILIDADE FAMILIAR (PE)';
  if(id.startsWith('saneamento_'))return 'INFRAESTRUTURA SOCIOAMBIENTAL - CENSO 2022';
@@ -133,28 +136,40 @@ function cover(pdf,fonts,d,analysis){
  p.drawText('HOMOLOGAÇÃO - NÃO É PARECER DEFINITIVO DE VIABILIDADE',{x:46,y:70,size:8.5,font:fonts.bold,color:COLORS.white});
 }
 function indicatorPages(pdf,fonts,d){
+ // Paginação por altura real do conteúdo. Label, procedência e valor ocupam linhas
+ // distintas; nenhuma linha é colocada sobre elementos vizinhos.
  let view=makePage(pdf,fonts,'Indicadores e métricas municipais',d.municipio.nome+' / '+d.municipio.uf+' · fontes e períodos individuais');
  let p=view.page,y=view.y,current='';
  for(const item of d.indicators){
   const group=sectionOf(item.id),value=formatIndicator(item);
-  const valueLines=wrap(value,fonts.bold,13,477);
-  const noteLines=item.note?wrap(item.note,fonts.reg,7.3,474):[];
-  const rowHeight=39+(valueLines.length>1?14:0)+(noteLines.length?Math.min(noteLines.length,2)*10:0);
-  const need=(current===group?0:26)+rowHeight+9;
-  if(y-need<67){view=makePage(pdf,fonts,'Indicadores e métricas (continuação)',d.municipio.nome+' / '+d.municipio.uf);p=view.page;y=view.y;current=''}
-  if(current!==group){
-   p.drawRectangle({x:42,y:y-2,width:4,height:14,color:COLORS.green});
-   p.drawText(clean(group),{x:54,y:y+1,size:10,font:fonts.bold,color:COLORS.blue});
-   y-=25;current=group;
-  }
-  p.drawRectangle({x:42,y:y-rowHeight,width:511,height:rowHeight,color:item.status==='verificado'?COLORS.pale:COLORS.neutral});
-  p.drawText(clean(item.label),{x:54,y:y-16,size:9.5,font:fonts.bold,color:COLORS.navy,maxWidth:478});
-  let pos=text(p,value,54,y-35,{size:13,font:fonts.bold,color:item.value===null?COLORS.gray:COLORS.blue,maxWidth:478,lineHeight:14});
-  if(noteLines.length){text(p,item.note,54,pos-1,{size:7.3,font:fonts.reg,color:COLORS.gray,maxWidth:474,lineHeight:10})}
   const source=d.sources[item.source]?.name||'Fonte não cadastrada';
-  const sourceLabel=source+' | '+(item.period||'competência indisponível');
-  p.drawText(clean(sourceLabel),{x:288,y:y-16,size:7.2,font:fonts.reg,color:COLORS.gray,maxWidth:251});
-  y-=rowHeight+6;
+  const sourceLabel=source+'  |  '+(item.period||'competência indisponível');
+  const labelRows=wrap(item.label,fonts.bold,9.5,476);
+  const sourceRows=wrap(sourceLabel,fonts.reg,7.5,476);
+  const valueRows=wrap(value,fonts.bold,12.3,476);
+  const noteRows=item.note?wrap(item.note,fonts.reg,7.6,476):[];
+  const height=14+labelRows.length*12+sourceRows.length*10+6+valueRows.length*15+
+    (noteRows.length?4+noteRows.length*10:0)+7;
+  const groupRows=group===current?[]:wrap(group,fonts.bold,9.4,473);
+  const headerHeight=groupRows.length?groupRows.length*12+14:0;
+  const required=height+headerHeight+8;
+  if(y-required<77){
+   view=makePage(pdf,fonts,'Indicadores e métricas (continuação)',d.municipio.nome+' / '+d.municipio.uf);
+   p=view.page;y=view.y;current='';
+  }
+  if(current!==group){
+   const rows=wrap(group,fonts.bold,9.4,473);
+   p.drawRectangle({x:42,y:y-14,width:4,height:16,color:COLORS.green});
+   y=text(p,group,54,y,{size:9.4,font:fonts.bold,maxWidth:477,lineHeight:12,color:COLORS.blue})-14;
+   current=group;
+  }
+  const background=item.status==='verificado'?COLORS.pale:COLORS.neutral;
+  p.drawRectangle({x:42,y:y-height,width:511,height,color:background});
+  let cursor=text(p,item.label,54,y-14,{size:9.5,font:fonts.bold,maxWidth:476,lineHeight:12,color:COLORS.navy});
+  cursor=text(p,sourceLabel,54,cursor-1,{size:7.5,font:fonts.reg,maxWidth:476,lineHeight:10,color:COLORS.gray});
+  cursor=text(p,value,54,cursor-6,{size:12.3,font:fonts.bold,maxWidth:476,lineHeight:15,color:item.value===null?COLORS.gray:COLORS.blue});
+  if(noteRows.length)text(p,item.note,54,cursor-4,{size:7.6,font:fonts.reg,maxWidth:476,lineHeight:10,color:COLORS.gray});
+  y-=height+8;
  }
 }
 function executivePage(pdf,fonts,d){
@@ -204,8 +219,8 @@ function analysisPages(pdf,fonts,d,analysis){
  y-=8;p.drawText('RECOMENDAÇÕES CONDICIONADAS',{x:43,y,size:11,font:fonts.bold,color:COLORS.navy});y-=26;
  for(const recommendation of analysis.recommendations||[]){
   const rows=wrap(recommendation.reason,fonts.reg,9.5,485);
-  if(y-(rows.length*14+28)<70){view=makePage(pdf,fonts,'Propostas de aprofundamento (continuação)',d.municipio.nome);p=view.page;y=view.y;}
-  p.drawText(clean(recommendation.title)+' · '+clean(recommendation.priority),{x:44,y,size:10,font:fonts.bold,color:COLORS.blue});y-=19;
+  if(y-(rows.length*14+wrap(recommendation.title+' · '+recommendation.priority,fonts.bold,10,499).length*13+24)<78){view=makePage(pdf,fonts,'Propostas de aprofundamento (continuação)',d.municipio.nome);p=view.page;y=view.y;}
+  y=text(p,clean(recommendation.title)+' · '+clean(recommendation.priority),44,y,{size:10,font:fonts.bold,color:COLORS.blue,maxWidth:499,lineHeight:13})-6;
   y=text(p,recommendation.reason,44,y,{size:9.5,font:fonts.reg,maxWidth:484,lineHeight:14,color:COLORS.gray})-10;
  }
 }
@@ -213,9 +228,9 @@ function sourcesPages(pdf,fonts,d,analysis){
  let view=makePage(pdf,fonts,'Fontes, rastreabilidade e limitações','Bases públicas identificadas e status de cobertura');
  let {page:p}=view,y=view.y;
  for(const [key,s] of Object.entries(d.sources)){
-  const lines=wrap(s.url,fonts.reg,7.4,510),need=26+lines.length*11;
+  const lines=wrap(s.url,fonts.reg,7.4,506),nameLines=wrap(s.name,fonts.bold,9.6,506),need=nameLines.length*12+lines.length*11+19;
   if(y-need<100){view=makePage(pdf,fonts,'Fontes públicas (continuação)',d.municipio.nome);p=view.page;y=view.y;}
-  p.drawText(clean(s.name),{x:43,y,size:10,font:fonts.bold,color:COLORS.blue});y-=15;
+  y=text(p,s.name,43,y,{size:9.6,font:fonts.bold,color:COLORS.blue,maxWidth:506,lineHeight:12})-4;
   y=text(p,s.url,44,y,{size:7.4,font:fonts.reg,maxWidth:507,lineHeight:11,color:COLORS.gray})-15;
  }
  if(y<235){view=makePage(pdf,fonts,'Fontes e lacunas (continuação)',d.municipio.nome);p=view.page;y=view.y;}
