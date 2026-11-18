@@ -6,7 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server-local.js",
-    "check": "node --check app.js && node --check api/diagnostico.js && node --check api/municipios.js && node --check api/analise.js && node --check api/relatorio.js && node --check data/ideb2025/index.js",
+    "check": "node --check app.js && node --check api/diagnostico.js && node --check api/municipios.js && node --check api/analise.js && node --check api/relatorio.js && node --check data/ideb2025/index.js && node --check api/suas.js",
     "test": "node --test tests/*.test.js"
   },
   "engines": {
