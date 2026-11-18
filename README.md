@@ -131,3 +131,12 @@ Não configurar credenciais nem dados pessoais no repositório. O PDF e a IA só
 - [Rastreabilidade, metodologia e avisos de interpretação](docs/INTEGRACAO-IVCAD-CAGED-SANEAMENTO-2026.md).
 
 As séries estaduais estáticas **não** se atualizam automaticamente. Uma nova competência exige reextração, checagens e versionamento. Outras UFs: IVCAD nacional e Caged nacional **não integrados** nesta etapa.
+
+## V4 — economia municipal dinâmica, IVCAD sem snapshot e revisão de PDF
+- Fonte, metodologia, limites e QA: [Auditoria V4](docs/AUDITORIA-V4-FONTES-E-PDF.md).
+- **IVCAD deixou de ser estático**: snapshots PE excluídos; consulta em tempo real via API pública de PE (sete séries verificadas). A API nacional do MDS não foi validada; fora de PE exibir link para painel nacional, não números fictícios.
+- **Novas APIs nacionais IBGE** para PIB municipal anual, pessoal assalariado por setor CNAE (CEMPRE) e desocupação **estadual** por faixas etárias (PNAD), sempre com ano/universo nos indicadores.
+- **MEI ativo municipal** ainda não integrado: painel oficial da Receita Federal sem API pública estável confirmada. Não confundir total de empresas ativas com MEIs.
+- **PDF sem textos sobrepostos**: os blocos reservam altura conforme texto real, mantendo estética original; a análise social passou a contextualizar economia, território, educação, proteção social e hipóteses de projeto.
+- A pesquisa deixou de exibir exemplos de cidades, preservando a consulta por nome ou código IBGE.
+- O restante das séries históricas estáticas (Novo Caged PE, IDEB, potencial MTE/SIT) ainda exige novos mecanismos de sincronização.
