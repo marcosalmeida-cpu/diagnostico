@@ -47,6 +47,7 @@ function text(page,string,x,y,style) {
 }
 function rule(page,y,x=42,w=511){page.drawLine({start:{x,y},end:{x:x+w,y},thickness:1,color:COLORS.line})}
 function sectionOf(id){
+ if(id.startsWith('mte_'))return 'APRENDIZAGEM PROFISSIONAL - POTENCIAL DE COTA';
  if(id.startsWith('orcamento_'))return 'EXECUÇÃO ORÇAMENTÁRIA';
  if(id.startsWith('jovens_'))return 'PERFIL DA JUVENTUDE';
  if(/(alfabetizacao|medio|superior|ideb)/.test(id))return 'ESCOLARIDADE E EDUCAÇÃO';
@@ -55,7 +56,7 @@ function sectionOf(id){
 function formatIndicator(v){
  if(v.value===null)return 'Indisponível';
  if(v.unit==='R$')return currency.format(v.value);
- return number.format(v.value)+(v.unit==='pessoas'?' pessoas':v.unit==='%'?'%':v.unit==='km²'?' km²':v.unit==='hab./km²'?' hab./km²':'');
+ return number.format(v.value)+(v.unit==='pessoas'?' pessoas':v.unit==='%'?'%':v.unit==='km²'?' km²':v.unit==='hab./km²'?' hab./km²':v.unit==='postos potenciais'?' postos potenciais':'');
 }
 function makePage(pdf,fonts,title,subtitle){
  const p=pdf.addPage(A4),h=A4[1];
