@@ -20,6 +20,17 @@ function factualAnalysis(d) {
   if(idebInitial||idebFinal)facts.push('O IDEB 2025 da rede pública municipalmente agregada foi '+(idebInitial?n.format(idebInitial.value):'não publicado')+' nos anos iniciais e '+(idebFinal?n.format(idebFinal.value):'não publicado')+' nos anos finais do ensino fundamental. O índice reflete aprendizagem e fluxo escolar; não mede sozinho vulnerabilidade social.');
   const cras=find('suas_cras_total_2024');
   if(cras)facts.push('O relatório municipal do Censo SUAS 2024 registra '+n.format(cras.value)+' equipamentos CRAS por faixa de capacidade de referenciamento. O total não mede, isoladamente, cobertura territorial, número de famílias acompanhadas ou suficiência da política pública.');
+  const vulnerability=find('ivcad_geral');
+  if(vulnerability){
+   const dims=[['Necessidade de cuidados','ivcad_nc'],['Primeira infância','ivcad_dpi'],['Crianças e adolescentes','ivcad_dca'],['Trabalho e qualificação','ivcad_tqa'],['Recursos','ivcad_dr'],['Condições habitacionais','ivcad_ch']]
+     .map(([name,id])=>({name,value:find(id)?.value})).filter(x=>Number.isFinite(x.value)).sort((a,b)=>b.value-a.value);
+   const fmtIndex=x=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}).format(x);
+   facts.push('No recorte de famílias elegíveis do IVCAD em Pernambuco (2026), o índice geral é '+fmtIndex(vulnerability.value)+' (escala de 0 a 1; quanto maior, maior a vulnerabilidade identificada nesse universo). Não é percentual de famílias vulneráveis e não abrange automaticamente todas as famílias do Cadastro Único.');
+   if(dims.length===6)facts.push('As maiores pontuações do IVCAD ocorreram nas dimensões '+dims[0].name+' ('+fmtIndex(dims[0].value)+') e '+dims[1].name+' ('+fmtIndex(dims[1].value)+'). Os valores orientam investigação social; não comprovam causalidade nem priorização automática de projetos.');
+  }
+  const waterWithout=find('saneamento_agua_sem_ligacao_pct'), sewageConnected=find('saneamento_esgoto_rede_fossa_pct');
+  if(waterWithout&&sewageConnected)
+   facts.push('O Censo 2022 indica '+n.format(waterWithout.value)+'% dos domicílios particulares permanentes ocupados sem ligação à rede geral de água e '+n.format(sewageConnected.value)+'% com esgotamento em rede geral/pluvial ou fossa ligada à rede. Esses dados caracterizam infraestrutura domiciliar histórica, não medem diretamente exposição climática, potabilidade ou tratamento de esgoto.');
   const quota=find('mte_potencial_cota');
   if(quota)facts.push('A base MTE/SIT (07/2026) registra potencial de cota de '+n.format(quota.value)+' aprendizes. Esse número representa potencial normativo e não deve ser chamado de oportunidades abertas, contratações ou vagas disponibilizadas.');
   const sectors=[['comércio','mte_cota_comercio'],['serviços','mte_cota_servicos'],['indústria','mte_cota_industria'],['agricultura','mte_cota_agricultura'],['transportes','mte_cota_transportes'],['outros setores','mte_cota_outros']].map(([label,id])=>({label,value:find(id)?.value})).filter(x=>Number.isFinite(x.value));
