@@ -3,6 +3,7 @@
 const IBGE = 'https://servicodados.ibge.gov.br';
 const SICONFI = 'https://apidatalake.tesouro.gov.br';
 const {getCras}=require('./suas');
+const {getByMunicipio:readIvcadPE,SOURCE:IVCAD_PE_SOURCE}=require('../data/ivcad2026pe');
 function readPotential2026(code){
   try{return require('../data/mte2026').getByMunicipio(code);}
   catch(_){return null;}
@@ -16,6 +17,7 @@ const SOURCES = {
   ibge: { name: 'IBGE · Censo e estimativas', url: 'https://servicodados.ibge.gov.br/api/docs/' },
   tesouro: { name: 'Tesouro Nacional · SICONFI', url: 'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos' },
   mds: { name: 'MDS · Cadastro Único e IVCAD', url: 'https://www.gov.br/mds/pt-br/orgaos/SAGICAD/dados-e-ferramentas-informacionais/dados-e-ferramentas-do-cadastro-unico/' },
+  ivcad_pe: { name: 'MDS / SEPLAG-PE · IVCAD 2026 (recorte estadual)', url: IVCAD_PE_SOURCE.url },
   inep: { name: 'INEP · IDEB', url: 'https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/ideb/resultados' },
   mte: { name: 'MTE/SIT · Potencial de aprendizagem · 07/2026', url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/insercao-de-aprendiz-1/potencial_ead_julho-1.xlsx' },
   suas: { name: 'MDS · Censo SUAS', url: 'https://www.gov.br/mds/pt-br/acoes-e-programas/suas/gestao-do-suas/vigilancia-socioassistencial-1/censo-suas' }
@@ -148,6 +150,7 @@ async function getDiagnosis(code) {
   const higherPct = Number.isFinite(total18) && total18 > 0 ? within(100*education.get('99713')/total18,0,100) : null;
   const ideb=readIdeb2025(codigo);
   const learning=readPotential2026(codigo);
+  const ivcad = uf==='PE' ? readIvcadPE(codigo) : null;
   const data = [
     indicator('populacao_censo', 'População residente · Censo', asFinite(census['93:2022']), 'pessoas', '2022', 'ibge'),
     indicator('populacao_estimativa', 'População estimada', latestYear ? asFinite(estimated['9324:' + latestYear]) : null, 'pessoas', latestYear ? String(latestYear) : '—', 'ibge'),
@@ -189,6 +192,19 @@ async function getDiagnosis(code) {
     indicator('orcamento_educacao', 'Despesas liquidadas · Educação', budget?.education ?? null, 'R$', budget?.period ?? '—', 'tesouro'),
     indicator('orcamento_saude', 'Despesas liquidadas · Saúde', budget?.health ?? null, 'R$', budget?.period ?? '—', 'tesouro')
   ];
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)','2026','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)','2026','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)','2026','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)','2026','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)','2026','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)','2026','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)','2026','ivcad_pe'),
+    indicator('ivcad_familias_universo','Famílias no universo da extração IVCAD',ivcad?.familias??null,'famílias','2026','ivcad_pe','Recorte da base do índice; não equivale a todas as famílias inscritas no Cadastro Único.'),
+    indicator('ivcad_pessoas_universo','Pessoas no universo da extração IVCAD',ivcad?.pessoas??null,'pessoas','2026','ivcad_pe','Recorte da base do índice; não equivale a todas as pessoas inscritas no Cadastro Único.')
+  );
   const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
   const modules = [
     {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
@@ -198,7 +214,8 @@ async function getDiagnosis(code) {
     {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
     {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
     {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
-    {id:'cadunico',name:'Cadastro Único e IVCAD',status:'nao_integrado',source:'mds',reason:'Sem extração agregada municipal validada nesta versão.'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · Índice de Vulnerabilidade Familiar',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'mds',reason:uf==='PE'?(ivcad?'Fonte oficial estadual de PE, ano-base 2026; 6 dimensões + índice geral; universo restrito.':'Código municipal sem registro íntegro no arquivo estadual IVCAD 2026.'):'A base IVCAD 2026 validada nesta etapa cobre apenas Pernambuco (185 localidades). Não generalizar dados estaduais para outras UFs.'},
     {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
     {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
     {id:'trabalho',name:'Trabalho e renda',status:'nao_integrado',source:'mte',reason:'RAIS/Novo Caged ainda não validados.'},
@@ -209,7 +226,8 @@ async function getDiagnosis(code) {
     sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
       disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
     notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
-      'Comparações e recomendações dependem de indicadores equivalentes e validados.'] };
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD 2026 integrado exclusivamente para municípios de Pernambuco; universo familiar diferente da população residente e do total cadastrado.'] };
 }
 async function fetchBudget(codigo) {
   for (const year of [2025, 2024]) {
