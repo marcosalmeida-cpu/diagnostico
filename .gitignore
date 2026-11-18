@@ -1,0 +1,16 @@
+# Dependências
+node_modules/
+
+# Segredos locais e credenciais
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Builds temporários
+.vercel/
+dist/
+coverage/
+*.log
+.DS_Store
