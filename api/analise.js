@@ -13,6 +13,8 @@ function factualAnalysis(d) {
   if(literacy)facts.push('A taxa de alfabetização de pessoas com 15 anos ou mais foi de '+n.format(literacy.value)+'% no Censo 2022. O indicador não informa, isoladamente, conclusão escolar ou necessidade de qualificação profissional.');
   const idebInitial=find('ideb_iniciais_publica_2025'), idebFinal=find('ideb_finais_publica_2025');
   if(idebInitial||idebFinal)facts.push('O IDEB 2025 da rede pública municipalmente agregada foi '+(idebInitial?n.format(idebInitial.value):'não publicado')+' nos anos iniciais e '+(idebFinal?n.format(idebFinal.value):'não publicado')+' nos anos finais do ensino fundamental. O índice reflete aprendizagem e fluxo escolar; não mede sozinho vulnerabilidade social.');
+  const cras=find('suas_cras_total_2024');
+  if(cras)facts.push('O relatório municipal do Censo SUAS 2024 registra '+n.format(cras.value)+' equipamentos CRAS por faixa de capacidade de referenciamento. O total não mede, isoladamente, cobertura territorial, número de famílias acompanhadas ou suficiência da política pública.');
   const quota=find('mte_potencial_cota');
   if(quota)facts.push('A base MTE/SIT (07/2026) registra potencial de cota de '+n.format(quota.value)+' aprendizes. Esse número representa potencial normativo e não deve ser chamado de oportunidades abertas, contratações ou vagas disponibilizadas.');
   const sectors=[['comércio','mte_cota_comercio'],['serviços','mte_cota_servicos'],['indústria','mte_cota_industria'],['agricultura','mte_cota_agricultura'],['transportes','mte_cota_transportes'],['outros setores','mte_cota_outros']].map(([label,id])=>({label,value:find(id)?.value})).filter(x=>Number.isFinite(x.value));
