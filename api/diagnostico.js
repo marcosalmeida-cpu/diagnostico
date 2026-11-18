@@ -2,6 +2,11 @@
 
 const IBGE = 'https://servicodados.ibge.gov.br';
 const SICONFI = 'https://apidatalake.tesouro.gov.br';
+function readIdeb2025(code){
+  try { return require('../data/ideb2025').getByMunicipio(code); }
+  catch (_) { return {inicial:null,final:null}; }
+}
+
 const SOURCES = {
   ibge: { name: 'IBGE · Censo e estimativas', url: 'https://servicodados.ibge.gov.br/api/docs/' },
   tesouro: { name: 'Tesouro Nacional · SICONFI', url: 'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos' },
@@ -95,6 +100,7 @@ async function getDiagnosis(code) {
   const lowCount = Number.isFinite(total18) && total18 > 0 ? education.get('9493') + education.get('9494') : null;
   const lowPct = Number.isFinite(lowCount) && Number.isFinite(total18) && total18 > 0 ? within(100*lowCount/total18,0,100) : null;
   const higherPct = Number.isFinite(total18) && total18 > 0 ? within(100*education.get('99713')/total18,0,100) : null;
+  const ideb=readIdeb2025(codigo);
   const data = [
     indicator('populacao_censo', 'População residente · Censo', asFinite(census['93:2022']), 'pessoas', '2022', 'ibge'),
     indicator('populacao_estimativa', 'População estimada', latestYear ? asFinite(estimated['9324:' + latestYear]) : null, 'pessoas', latestYear ? String(latestYear) : '—', 'ibge'),
@@ -109,6 +115,8 @@ async function getDiagnosis(code) {
     indicator('sem_medio_completo_18mais', 'Pessoas de 18 anos ou mais sem ensino médio completo', lowCount, 'pessoas','2022','ibge', 'Soma dos níveis sem instrução/fundamental incompleto e fundamental completo/médio incompleto.'),
     indicator('sem_medio_completo_18mais_pct', 'Parcela de 18 anos ou mais sem ensino médio completo', lowPct, '%','2022','ibge', 'Denominador: total da população de 18 anos ou mais com níveis de instrução classificados na tabela 10061.'),
     indicator('superior_completo_18mais_pct','Parcela de 18 anos ou mais com superior completo',higherPct,'%','2022','ibge'),
+    indicator('ideb_iniciais_publica_2025','IDEB 2025 · anos iniciais · rede pública',ideb.inicial,'nota (0–10)','2025','inep','Dados da rede pública municipalmente agregados pelo INEP; escala de 0 a 10.'),
+    indicator('ideb_finais_publica_2025','IDEB 2025 · anos finais · rede pública',ideb.final,'nota (0–10)','2025','inep','Dados da rede pública municipalmente agregados pelo INEP; escala de 0 a 10.'),
     indicator('orcamento_assistencia', 'Despesas liquidadas · Assistência Social', budget?.assist ?? null, 'R$', budget?.period ?? '—', 'tesouro', 'Despesa por função. Não representa orçamento disponível para novos projetos.'),
     indicator('orcamento_educacao', 'Despesas liquidadas · Educação', budget?.education ?? null, 'R$', budget?.period ?? '—', 'tesouro'),
     indicator('orcamento_saude', 'Despesas liquidadas · Saúde', budget?.health ?? null, 'R$', budget?.period ?? '—', 'tesouro')
@@ -118,7 +126,7 @@ async function getDiagnosis(code) {
     {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
     {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
     {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
-    {id:'ideb',name:'IDEB 2025',status:'nao_integrado',source:'inep',reason:'Resultados publicados pelo INEP; carga municipal estruturada ainda em preparação.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
     {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
     {id:'cadunico',name:'Cadastro Único e IVCAD',status:'nao_integrado',source:'mds',reason:'Sem extração agregada municipal validada nesta versão.'},
     {id:'aprendizagem',name:'Aprendizagem profissional',status:'nao_integrado',source:'mte',reason:'Importação do arquivo municipal do MTE pendente.'},
