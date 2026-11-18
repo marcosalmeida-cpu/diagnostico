@@ -58,7 +58,8 @@ function finances(income,expense,year){
 }
 async function getBudget(code){
  if(!/^\d{7}$/.test(code))return null;
- for(const year of [2025,2024]){
+ const lastAnnualYear=new Date().getUTCFullYear()-1;
+ for(const year of [lastAnnualYear,lastAnnualYear-1]){
   let rows=[];
   try{rows=await fetchDca(code,year,'E')}catch(_){continue;}
   if(!rows.length)continue;
