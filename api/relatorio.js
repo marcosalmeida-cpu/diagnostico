@@ -134,7 +134,7 @@ function indicatorPages(pdf,fonts,d){
   const noteLines=item.note?wrap(item.note,fonts.reg,7.3,474):[];
   const rowHeight=39+(valueLines.length>1?14:0)+(noteLines.length?Math.min(noteLines.length,2)*10:0);
   const need=(current===group?0:26)+rowHeight+9;
-  if(y-need<80){view=makePage(pdf,fonts,'Indicadores e métricas (continuação)',d.municipio.nome+' / '+d.municipio.uf);p=view.page;y=view.y;current=''}
+  if(y-need<67){view=makePage(pdf,fonts,'Indicadores e métricas (continuação)',d.municipio.nome+' / '+d.municipio.uf);p=view.page;y=view.y;current=''}
   if(current!==group){
    p.drawRectangle({x:42,y:y-2,width:4,height:14,color:COLORS.green});
    p.drawText(clean(group),{x:54,y:y+1,size:10,font:fonts.bold,color:COLORS.blue});
@@ -147,7 +147,7 @@ function indicatorPages(pdf,fonts,d){
   const source=d.sources[item.source]?.name||'Fonte não cadastrada';
   const sourceLabel=source+' | '+(item.period||'competência indisponível');
   p.drawText(clean(sourceLabel),{x:288,y:y-16,size:7.2,font:fonts.reg,color:COLORS.gray,maxWidth:251});
-  y-=rowHeight+9;
+  y-=rowHeight+6;
  }
 }
 function executivePage(pdf,fonts,d){
@@ -189,17 +189,17 @@ function analysisPages(pdf,fonts,d,analysis){
  const blocks=Array.isArray(analysis.paragraphs)?analysis.paragraphs:[];
  for(const paragraph of blocks){
   const rows=wrap(paragraph,fonts.reg,10.5,493),height=rows.length*16+18;
-  if(y-height<100){view=makePage(pdf,fonts,'Leitura técnica (continuação)',d.municipio.nome+' / '+d.municipio.uf);p=view.page;y=view.y;}
+  if(y-height<80){view=makePage(pdf,fonts,'Leitura técnica (continuação)',d.municipio.nome+' / '+d.municipio.uf);p=view.page;y=view.y;}
   p.drawRectangle({x:42,y:y-height+13,width:3,height:height-6,color:COLORS.green});
-  y=text(p,paragraph,53,y-5,{size:10.5,font:fonts.reg,maxWidth:490,lineHeight:16,color:COLORS.ink})-22;
+  y=text(p,paragraph,53,y-5,{size:10.5,font:fonts.reg,maxWidth:490,lineHeight:16,color:COLORS.ink})-14;
  }
  if(y<240){view=makePage(pdf,fonts,'Propostas de aprofundamento',d.municipio.nome+' / '+d.municipio.uf);p=view.page;y=view.y;}
  y-=8;p.drawText('RECOMENDAÇÕES CONDICIONADAS',{x:43,y,size:11,font:fonts.bold,color:COLORS.navy});y-=26;
  for(const recommendation of analysis.recommendations||[]){
   const rows=wrap(recommendation.reason,fonts.reg,9.5,485);
-  if(y-(rows.length*14+36)<90){view=makePage(pdf,fonts,'Propostas de aprofundamento (continuação)',d.municipio.nome);p=view.page;y=view.y;}
+  if(y-(rows.length*14+28)<70){view=makePage(pdf,fonts,'Propostas de aprofundamento (continuação)',d.municipio.nome);p=view.page;y=view.y;}
   p.drawText(clean(recommendation.title)+' · '+clean(recommendation.priority),{x:44,y,size:10,font:fonts.bold,color:COLORS.blue});y-=19;
-  y=text(p,recommendation.reason,44,y,{size:9.5,font:fonts.reg,maxWidth:484,lineHeight:14,color:COLORS.gray})-17;
+  y=text(p,recommendation.reason,44,y,{size:9.5,font:fonts.reg,maxWidth:484,lineHeight:14,color:COLORS.gray})-10;
  }
 }
 function sourcesPages(pdf,fonts,d,analysis){
