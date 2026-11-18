@@ -98,3 +98,17 @@ Não configurar credenciais nem dados pessoais no repositório. O PDF e a IA só
 - **Cadastro Único e IVCAD**: consulta pública em https://cecad.cidadania.gov.br/ e https://paineis.mds.gov.br/public/extensions/observatorio-do-cadastro-unico/index.html ; requer processo confiável de captura de agregados municipais, referência e LGPD.
 - **RAIS/Novo Caged**: https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/estatisticas-trabalho ; requer arquivos municipais com controle de competência, ajustes e método.
 - Indicadores da rede SUAS além do total de CRAS: mantidos não integrados até comprovação de acesso e metodologia.
+
+## Painel compacto V3 — implementação da navegação
+- Especificação: [docs/ESPECIFICACAO-DASHBOARD-V3.md](docs/ESPECIFICACAO-DASHBOARD-V3.md)
+- Configuração de categorias, públicos e indicadores existentes: [taxonomy.js](taxonomy.js).
+- A capa foi reduzida; uma consulta municipal válida conduz à seção de indicadores; as duas barras horizontais compartilham **um único painel**.
+- Seis eixos temáticos: Demografia, Socioeducação, SUAS, Trabalho e Renda, Justiça Climática e Socioaprendizagem.
+- Seis públicos: POP Rua, Juventude, Pessoas Idosas, LGBTQIAPN+, Mulheres e Medida Socioeducativa.
+- Cards de destaque: até quatro; listagem inicial: até seis indicadores, com botão para expandir; fontes pormenorizadas recolhíveis.
+- Os 29 indicadores anteriores continuam mapeados (28 diretamente em eixos e despesa de Saúde como contexto transversal).
+- **Não existe indicador fictício:** categorias sem extração municipal verificada mostram "Em implantação", fonte de pesquisa e nota metodológica.
+- Jovens 15–29 são população juvenil, **não** quantidade de jovens em vulnerabilidade. Potencial da cota MTE **não** corresponde a oportunidades abertas.
+- Os próximos recortes a validar são população 60+, população por sexo, CadÚnico/IVCAD, RAIS/Novo Caged, justiça climática e dados municipais dos públicos específicos.
+- O PDF continua abrangente e reconsulta as fontes no servidor. Uma versão por filtro com capítulos por público está especificada, ainda não implementada.
+- Testes automatizados de taxonomia, cobertura de IDs e acessibilidade estrutural em tests/taxonomy.test.js.
