@@ -59,12 +59,15 @@ function finances(income,expense,year){
 async function getBudget(code){
  if(!/^\d{7}$/.test(code))return null;
  for(const year of [2025,2024]){
-  const r=await Promise.allSettled(['E','C','D'].map(a=>fetchDca(code,year,a)));
-  if(r[0].status!=='fulfilled'||!r[0].value.length)continue;
-  const core=parseBudget(r[0].value,year);
-  if(!core)continue;
-  const income=r[1].status==='fulfilled'?r[1].value:[];
-  const expense=r[2].status==='fulfilled'?r[2].value:[];
+  let rows=[];
+  try{rows=await fetchDca(code,year,'E')}catch(_){continue;}
+  if(!rows.length)continue;
+  const core=parseBudget(rows,year);if(!core)continue;
+  // Anexo I-E é suficiente para divulgar as funções/subfunções;
+  // falha de I-C ou I-D não invalida as rubricas de assistência social.
+  const other=await Promise.allSettled(['C','D'].map(a=>fetchDca(code,year,a)));
+  const income=other[0].status==='fulfilled'?other[0].value:[];
+  const expense=other[1].status==='fulfilled'?other[1].value:[];
   return {...core,finances:finances(income,expense,year)};
  }
  return null;
