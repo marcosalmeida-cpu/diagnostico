@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#091d41">
+<meta name="theme-color" content="#0322D6">
 <meta name="robots" content="noindex,nofollow">
 <meta name="description" content="Diagnóstico Territorial Integrado da Rede Cidadã. Dados públicos, fontes rastreáveis e análise social para decisões institucionais.">
 <title>Diagnóstico Territorial | Rede Cidadã</title>
@@ -14,17 +14,24 @@
 <script src="/app.js" defer></script>
 </head>
 <body>
+<svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+<symbol id="ic-overview" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></symbol>
+<symbol id="ic-data" viewBox="0 0 24 24"><path d="M4 19V11m0 8h16M9 19V7m5 12V4m5 15v-8"/></symbol>
+<symbol id="ic-analysis" viewBox="0 0 24 24"><path d="M12 3l1.9 5.9L20 11l-6.1 2.1L12 19l-1.9-5.9L4 11l6.1-2.1L12 3Zm6 13 .9 2.2L21 19l-2.1.8L18 22l-.9-2.2L15 19l2.1-.8L18 16Z"/></symbol>
+<symbol id="ic-sources" viewBox="0 0 24 24"><path d="M8 3.5h9L21 8v12a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2h1ZM17 4v4h4M9 12h8M9 16h8"/></symbol>
+<symbol id="ic-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6v-7ZM18 12h.01"/></symbol>
+</svg>
 <div class="app-shell">
  <aside class="sidebar" aria-label="Navegação principal">
-  <div class="brand"><div class="brand-icon">RC</div><div><b>REDE CIDADÃ</b><small>INTELIGÊNCIA TERRITORIAL</small></div></div>
-  <div class="nav-label">PLATAFORMA</div>
-  <nav class="side-nav">
-   <a class="active" href="#visao"><span>◧</span> Visão territorial</a>
-   <a href="#indicadores"><span>◫</span> Indicadores públicos</a>
-   <a href="#analise"><span>✧</span> Leitura social</a>
-   <a href="#fontes"><span>▤</span> Fontes e auditoria</a>
+  <a class="rail-brand" href="#visao" aria-label="Rede Cidadã · início" title="Diagnóstico Territorial · Início"><img src="/assets/rede-cidada-rostinho.svg" alt="Símbolo da Rede Cidadã" width="48" height="48"></a>
+  <div class="rail-divider"></div>
+  <nav class="side-nav" aria-label="Seções do diagnóstico">
+   <a class="active" href="#visao" title="Visão territorial" aria-label="Visão territorial"><svg class="rail-icon" aria-hidden="true"><use href="#ic-overview"/></svg></a>
+   <a href="#indicadores" title="Indicadores públicos" aria-label="Indicadores públicos"><svg class="rail-icon" aria-hidden="true"><use href="#ic-data"/></svg></a>
+   <a href="#analise" title="Leitura social" aria-label="Leitura social"><svg class="rail-icon" aria-hidden="true"><use href="#ic-analysis"/></svg></a>
+   <a href="#fontes" title="Fontes e auditoria" aria-label="Fontes e auditoria"><svg class="rail-icon" aria-hidden="true"><use href="#ic-sources"/></svg></a>
   </nav>
-  <div class="side-bottom"><div class="env-dot"></div><div><strong>Ambiente de homologação</strong><small>V2.0 · dados verificáveis</small></div></div>
+  <div class="rail-bottom" title="Ambiente institucional de homologação"><span class="env-dot"></span></div>
  </aside>
  <div class="main">
   <header class="topbar">
@@ -61,6 +68,7 @@
 
       <article class="kpi"><div class="kpi-top"><span>Jovens de 15 a 29 anos</span><span class="kpi-icon">◉</span></div><strong id="kpiYouth">—</strong><div class="kpi-meta">IBGE · Censo 2022</div></article>
       <article class="kpi"><div class="kpi-top"><span>Alfabetização · 15+ anos</span><span class="kpi-icon">✎</span></div><strong id="kpiLiteracy">—</strong><div class="kpi-meta">IBGE · Censo 2022</div></article>
+      <article class="kpi"><div class="kpi-top"><span>Equipamentos CRAS · Censo SUAS</span><span class="kpi-icon">⌂</span></div><strong id="kpiCras">—</strong><div class="kpi-meta">MDS/SAGICAD · Censo SUAS 2024</div></article>
       <article class="kpi"><div class="kpi-top"><span>Potencial de cota · Aprendizagem</span><span class="kpi-icon">◈</span></div><strong id="kpiPotential">—</strong><div class="kpi-meta">MTE/SIT · julho 2026 · não são oportunidades abertas</div></article>
       <article class="kpi"><div class="kpi-top"><span>IDEB 2025 · anos iniciais</span><span class="kpi-icon">◈</span></div><strong id="kpiIdebInitial">—</strong><div class="kpi-meta">INEP · rede pública · 2025</div></article>
       <article class="kpi"><div class="kpi-top"><span>IDEB 2025 · anos finais</span><span class="kpi-icon">◈</span></div><strong id="kpiIdebFinal">—</strong><div class="kpi-meta">INEP · rede pública · 2025</div></article>
@@ -86,6 +94,6 @@
   <footer>© Rede Cidadã · Diagnóstico Territorial Integrado <span>Homologação V2.0 · Dados públicos · Uso técnico sujeito à validação</span></footer>
  </div>
 </div>
-<nav class="mobile-tabs" aria-label="Navegação móvel"><a href="#visao">◧<small>Início</small></a><a href="#indicadores">◫<small>Dados</small></a><a href="#analise">✧<small>Análise</small></a><a href="#fontes">▤<small>Fontes</small></a></nav>
+<nav class="mobile-tabs" aria-label="Navegação móvel"><a href="#visao" aria-label="Início"><svg class="rail-icon" aria-hidden="true"><use href="#ic-overview"/></svg><small>Início</small></a><a href="#indicadores" aria-label="Indicadores"><svg class="rail-icon" aria-hidden="true"><use href="#ic-data"/></svg><small>Dados</small></a><a href="#analise" aria-label="Análise"><svg class="rail-icon" aria-hidden="true"><use href="#ic-analysis"/></svg><small>Análise</small></a><a href="#fontes" aria-label="Fontes"><svg class="rail-icon" aria-hidden="true"><use href="#ic-sources"/></svg><small>Fontes</small></a></nav>
 </body>
 </html>
