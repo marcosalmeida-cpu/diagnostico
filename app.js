@@ -14,7 +14,8 @@ function createTab(item,kind){
  const button=document.createElement('button');
  button.type='button';button.className='dashboard-tab';
  button.dataset.group=item.id;button.dataset.kind=kind;
- button.setAttribute('aria-label',(kind==='themes'?'Eixo temático: ':'Público: ')+item.name);
+ button.setAttribute('aria-label',(kind==='themes'?'Eixo temático: ':'Público: ')+(item.name==='MSE'?'MSE — Medida Socioeducativa':item.name));
+ if(item.name==='MSE')button.title='MSE — Medida Socioeducativa';
  button.setAttribute('aria-controls','activePanel');
  const svg=document.createElementNS(SVGNS,'svg');
  svg.setAttribute('class','tab-icon');svg.setAttribute('aria-hidden','true');svg.setAttribute('viewBox','0 0 24 24');
