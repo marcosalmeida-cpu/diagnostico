@@ -1,0 +1,170 @@
+/* Rede Cidadã · Navegação V3.2
+ * Marca oficial: amarelo #FFC000 / azul #0322D6.
+ * Padrão = Premium compacto (B). Para comparar a alternativa A, use ?barra=ultra.
+ * As duas versões modificam APENAS a apresentação; filtros, indicadores e PDF permanecem iguais.
+ */
+:root {
+ --nav-yellow: #FFC000;
+ --nav-hover: #FFE28A;
+ --nav-yellow-soft: #FFF1BE;
+ --nav-ink: #10265B;
+ --nav-neutral: #536681;
+}
+.dashboard-nav.premium-nav {
+ --nav-tap: 37px;
+ box-sizing: border-box;
+ gap: 7px;
+ padding: 5px 8px;
+ min-height: 0;
+ margin: 7px 0 4px;
+ border: 1px solid #E9E9E4;
+ border-radius: 13px;
+ background: rgba(255,255,255,.985);
+ box-shadow: 0 4px 17px rgba(22,44,78,.045);
+}
+.premium-switch {
+ gap: 2px;
+ padding: 2px;
+ border: 0;
+ border-radius: 10px;
+ background: #F3F5F7;
+}
+.premium-switch .switch-button {
+ box-sizing: border-box;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ min-height: var(--nav-tap);
+ padding: 6px 10px;
+ gap: 6px;
+ border-radius: 8px;
+ border: 1px solid transparent;
+ background: transparent;
+ color: var(--nav-neutral);
+ font-size: 10.5px;
+ font-weight: 750;
+ line-height: 1;
+ box-shadow: none;
+ transition: background-color .14s, color .14s, box-shadow .14s;
+}
+.premium-switch .switch-icon { width: 15px; height: 15px; stroke-width: 1.65; }
+.premium-divider {
+ width: 1px;
+ height: 22px;
+ margin: 0 2px;
+ background: #E8EBED;
+}
+.dashboard-nav .premium-tabs {
+ gap: 3px;
+ padding: 0 1px;
+ min-width: 0;
+ max-width: 100%;
+}
+.dashboard-nav .premium-tabs .dashboard-tab {
+ box-sizing: border-box;
+ min-height: var(--nav-tap);
+ padding: 7px 9px;
+ gap: 5px;
+ border-radius: 8px;
+ border: 1px solid transparent;
+ background: transparent;
+ color: var(--nav-neutral);
+ font-size: 10.5px;
+ font-weight: 700;
+ line-height: 1.15;
+ box-shadow: none;
+ transition: background-color .14s, color .14s, border-color .14s;
+}
+.dashboard-nav .premium-tabs .dashboard-tab .tab-icon {
+ width: 15px; height: 15px; stroke-width: 1.5;
+}
+.dashboard-nav .premium-tabs .dashboard-tab .tab-count { display: none; }
+.premium-nav-caption { display: none; }
+
+/* Amarelo é a cor de interação. O texto mantém contraste escuro. */
+.premium-switch .switch-button.is-active,
+.dashboard-nav .premium-tabs .dashboard-tab.is-active {
+ color: var(--nav-ink);
+ background: var(--nav-yellow);
+ border-color: var(--nav-yellow);
+ box-shadow: 0 2px 5px rgba(95,76,3,.10);
+}
+.premium-switch .switch-button:hover,
+.dashboard-nav .premium-tabs .dashboard-tab:hover {
+ color: var(--nav-ink);
+ background: var(--nav-hover);
+ border-color: #F5CA48;
+ box-shadow: none;
+}
+.premium-switch .switch-button.is-active:hover,
+.dashboard-nav .premium-tabs .dashboard-tab.is-active:hover {
+ color: var(--nav-ink);
+ background: #FFD43B;
+ border-color: #EABB17;
+}
+.premium-switch .switch-button:focus-visible,
+.dashboard-nav .premium-tabs .dashboard-tab:focus-visible {
+ outline: 2px solid #B78100;
+ outline-offset: 2px;
+ color: var(--nav-ink);
+}
+.premium-switch .switch-button:active,
+.dashboard-nav .premium-tabs .dashboard-tab:active {
+ background: var(--nav-yellow);
+ color: var(--nav-ink);
+}
+.premium-switch .switch-button.is-active .switch-icon,
+.dashboard-nav .premium-tabs .dashboard-tab.is-active .tab-icon {
+ color: var(--nav-ink);
+}
+.active-panel {scroll-margin-top: 60px;}
+
+/* Alternativa A — ultra: menos altura, chips mais estreitos, menos efeitos. */
+html[data-nav-style="ultra"] .dashboard-nav.premium-nav {
+ --nav-tap: 32px;
+ gap: 5px;
+ padding: 3px 6px;
+ border-radius: 10px;
+ border-color: #E8E9EA;
+ box-shadow: 0 2px 9px rgba(22,44,78,.035);
+}
+html[data-nav-style="ultra"] .premium-switch { border-radius: 7px; padding: 1px; }
+html[data-nav-style="ultra"] .premium-switch .switch-button {
+ gap: 4px; padding: 4px 7px; font-size: 10px; border-radius: 6px;
+}
+html[data-nav-style="ultra"] .premium-divider {height:19px;margin:0 1px;}
+html[data-nav-style="ultra"] .dashboard-nav .premium-tabs {gap:2px;}
+html[data-nav-style="ultra"] .dashboard-nav .premium-tabs .dashboard-tab {
+ padding: 4px 7px; gap: 4px; font-size: 10px; border-radius: 6px;
+}
+html[data-nav-style="ultra"] .dashboard-nav .premium-tabs .tab-icon {width:14px;height:14px;}
+html[data-nav-style="ultra"] .active-panel {scroll-margin-top:52px;}
+
+@media (max-width:1180px) {
+ .dashboard-nav.premium-nav {gap:6px;padding:5px 7px;}
+ .premium-switch .switch-button {padding:6px 8px;}
+ .dashboard-nav .premium-tabs .dashboard-tab {padding:6px 7px;}
+}
+@media (max-width:800px) {
+ .dashboard-nav.premium-nav { --nav-tap: 42px; padding: 4px 6px; min-height:0; gap:5px; border-radius:11px; }
+ .premium-switch {padding: 1px; gap: 0;}
+ .premium-switch .switch-button {padding: 8px 8px; min-height: var(--nav-tap);}
+ .dashboard-nav .premium-tabs .dashboard-tab {padding:8px 8px; min-height:var(--nav-tap);}
+ .active-panel {scroll-margin-top:67px;}
+ html[data-nav-style="ultra"] .dashboard-nav.premium-nav {--nav-tap:42px;padding:3px 5px;gap:4px;}
+ html[data-nav-style="ultra"] .premium-switch .switch-button {min-height:var(--nav-tap);padding:7px;}
+ html[data-nav-style="ultra"] .dashboard-nav .premium-tabs .dashboard-tab {min-height:var(--nav-tap);padding:7px;}
+ html[data-nav-style="ultra"] .active-panel {scroll-margin-top:65px;}
+}
+@media (max-width:530px) {
+ .premium-switch .switch-button {font-size:0;min-width:40px;padding:9px;}
+ .premium-switch .switch-icon {width:17px;height:17px;}
+ .premium-divider {margin:0 1px;height:23px;}
+ .dashboard-nav .premium-tabs .dashboard-tab {gap:4px;padding:8px 7px;}
+ .dashboard-nav .premium-tabs .dashboard-tab .tab-name {font-size:10px;}
+ html[data-nav-style="ultra"] .premium-switch .switch-button {font-size:0;min-width:40px;padding:9px;}
+ html[data-nav-style="ultra"] .dashboard-nav .premium-tabs .dashboard-tab .tab-name {font-size:10px;}
+}
+@media (prefers-reduced-motion:reduce) {
+ .premium-switch .switch-button,.dashboard-nav .premium-tabs .dashboard-tab {transition:none;}
+}
