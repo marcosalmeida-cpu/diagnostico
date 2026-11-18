@@ -3,6 +3,8 @@
 const IBGE = 'https://servicodados.ibge.gov.br';
 const SICONFI = 'https://apidatalake.tesouro.gov.br';
 const {getCras}=require('./suas');
+const {getBudget}=require('./orcamento-publico');
+const {getBenefits}=require('./beneficios-cgu');
 const {getEconomia,getIvcad}=require('./dados-dinamicos');
 const {getByMunicipio:readCagedPE,SOURCE:CAGED_PE_SOURCE}=require('../data/caged2026pe');
 function readPotential2026(code){
@@ -29,6 +31,11 @@ const SOURCES = {
   ibge_esgoto: { name: 'IBGE/SIDRA · Censo 2022, esgotamento (6805)', url: 'https://sidra.ibge.gov.br/tabela/6805' },
   inep: { name: 'INEP · IDEB', url: 'https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/ideb/resultados' },
   mte: { name: 'MTE/SIT · Potencial de aprendizagem · 07/2026', url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/insercao-de-aprendiz-1/potencial_ead_julho-1.xlsx' },
+  mds_cadunico: {name:'MDS / Observatório do Cadastro Único · agregados municipais',url:'https://paineis.mds.gov.br/public/extensions/observatorio-do-cadastro-unico/index.html'},
+  cgu_beneficios: {name:'CGU / Portal da Transparência · PBF e BPC por município',url:'https://api.portaldatransparencia.gov.br/'},
+  tesouro_dca: {name:'Tesouro Nacional/SICONFI · DCA, funções e subfunções de despesas liquidadas',url:'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos'},
+  atlas_pnud: {name:'PNUD/Ipea/FJP · Atlas Brasil, IDHM e demais indicadores',url:'https://www.atlasbrasil.org.br/'},
+  sinase_mdhc: {name:'MDHC · Levantamentos nacionais SINASE, abrangência e periodicidade específicas',url:'https://www.gov.br/mdh/pt-br/navegue-por-temas/crianca-e-adolescente/levantamentos-nacionais-do-sinase/levantamentos-nacionais'},
   suas: { name: 'MDS · Censo SUAS', url: 'https://www.gov.br/mds/pt-br/acoes-e-programas/suas/gestao-do-suas/vigilancia-socioassistencial-1/censo-suas' }
 };
 
@@ -164,7 +171,9 @@ async function getDiagnosis(code) {
     json(IBGE + '/api/v3/agregados/6803/periodos/2022/variaveis/381?localidades=N6[' + codigo + ']&classificacao=1821[72129,72144,72145,72153]'),
     json(IBGE + '/api/v3/agregados/6805/periodos/2022/variaveis/381?localidades=N6[' + codigo + ']&classificacao=11558[46292,46290,72110,72111,72112,72113,92858,72114,72115,92861]'),
     getEconomia(codigo,uf),
-    getIvcad(codigo,uf)
+    getIvcad(codigo,uf),
+    getBudget(codigo),
+    getBenefits(codigo)
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
@@ -189,6 +198,8 @@ async function getDiagnosis(code) {
   const learning=readPotential2026(codigo);
   const ivcad=results[11].status==='fulfilled'?results[11].value:null;
   const economic=results[10].status==='fulfilled'?results[10].value:{gdp:null,sectors:null,unemployment:null};
+  const budgetDetail=results[12].status==='fulfilled'?results[12].value:null;
+  const benefits=results[13].status==='fulfilled'?results[13].value:{configured:false,bolsa:null,bpc:null};
   const caged = uf==='PE' ? readCagedPE(codigo) : null;
   const sanitation=extractSaneamento(
     results[8].status==='fulfilled'?results[8].value:null,
@@ -244,6 +255,994 @@ async function getDiagnosis(code) {
     indicator('orcamento_educacao', 'Despesas liquidadas · Educação', budget?.education ?? null, 'R$', budget?.period ?? '—', 'tesouro'),
     indicator('orcamento_saude', 'Despesas liquidadas · Saúde', budget?.health ?? null, 'R$', budget?.period ?? '—', 'tesouro')
   ];
+  // SUAS/CadÚnico: o painel oficial é público, mas não existe API aberta
+  // nacional testada nesta integração. Ausência não é zero.
+  const cad=[
+    ['cadunico_familias','Famílias inscritas no Cadastro Único','famílias'],
+    ['cadunico_familias_por_100hab','Famílias inscritas por 100 habitantes','famílias/100 hab.'],
+    ['cadunico_pessoas','Pessoas inscritas no Cadastro Único','pessoas'],
+    ['cadunico_pessoas_pct','Pessoas inscritas / população residente','%'],
+    ['cadunico_baixa_renda','Famílias em situação de baixa renda','famílias'],
+    ['cadunico_pobreza','Famílias em situação de pobreza','famílias'],
+    ['cadunico_extrema_pobreza','Pessoas em situação de extrema pobreza','pessoas'],
+    ['cadunico_rua','Famílias cadastradas em situação de rua','famílias'],
+    ['cadunico_atualizadas','Famílias com cadastro atualizado','famílias'],
+    ['cadunico_atualizacao_pct','Percentual de famílias com cadastro atualizado','%']
+  ];
+  for(const [id,label,unit] of cad)data.push(indicator(id,label,null,unit,'—','mds_cadunico','Indicador previsto. Sem API pública nacional agregada validada nesta instalação; consulte o painel oficial do MDS. Não confundir famílias com pessoas nem aplicar denominador inválido.'));
+  const pbf=benefits?.bolsa||null,bpc=benefits?.bpc||null;
+  data.push(
+   indicator('suas_bolsa_familia_beneficiarios','Bolsa Família · quantitativo municipal publicado',pbf?.beneficiaries??null,'beneficiários',pbf?.period??'—','cgu_beneficios','API CGU requer chave privada CGU_API_KEY no servidor. Número agregado não é necessariamente pessoas únicas no ano.'),
+   indicator('suas_bolsa_familia_valor','Bolsa Família · valor mensal',pbf?.amount??null,'R
+  const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
+  data.push(
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
+  if(uf==='PE')data.push(
+    indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
+    indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
+    indicator('caged_saldo_202609','Saldo líquido de emprego formal no mês',caged?.saldo??null,'vínculos','09/2026','caged_pe','Admissões menos desligamentos, inclusive valores negativos; não é estoque de empregos.'),
+    indicator('caged_salario_admissao_202609','Salário médio nominal de admissão',caged?.salario??null,'R$','09/2026','caged_pe','Média de salários nas admissões do período; não equivale ao salário médio de todos os trabalhadores.')
+  );
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+  );
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
+  const modules = [
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
+    {id:'saneamento',name:'Saneamento domiciliar · Censo 2022',status:water&&sewer?'verificado':water||sewer?'parcial':'indisponivel',source:'ibge_esgoto',reason:'Censo 2022, dados de domicílios IBGE/SIDRA 6803 e 6805. Não mede riscos climáticos atuais ou tratamento de água e efluentes.'},
+    {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
+    {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
+    {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
+    {id:'cadunico',name:'CadÚnico municipal — agregados públicos',status:'nao_integrado',source:'mds_cadunico',reason:'Painel nacional oferece os dados, mas não foi identificado endpoint público para extração agregada testada de famílias, pessoas, extrema pobreza, situação de rua e atualização cadastral.'},
+    {id:'beneficios',name:'PBF e BPC — Portal da Transparência (CGU)',status:pbf||bpc?'verificado':'nao_integrado',source:'cgu_beneficios',reason:benefits?.configured?'API configurada, porém sem competência municipal validada na consulta atual.':'Chave CGU_API_KEY não configurada; nunca incluir senha em arquivo público.'},
+    {id:'orcamento_v5',name:'Orçamento por subfunção — SICONFI/DCA',status:budgetDetail?'verificado':'indisponivel',source:'tesouro_dca',reason:budgetDetail?'DCA '+budgetDetail.year+'. Fundos FIA/Idoso/FMAS não são identificáveis pela DCA de funções. Proxies são rotulados, não representam programas.':'DCA indisponível ou sem declaração validada.'},
+    {id:'atlas',name:'Atlas Brasil/PNUD — IDHM histórico',status:'nao_integrado',source:'atlas_pnud',reason:'Dados oficiais censitários de 2010 disponíveis no Atlas, mas sem API municipal validada para atualização automática nesta integração.'},
+    {id:'mse',name:'MSE / SINASE — medidas socioeducativas',status:'nao_integrado',source:'sinase_mdhc',reason:'Levantamentos federais por UF ou unidades não fornecem automaticamente contagem municipal de MSE em meio aberto; não criar valores inferidos.'},
+        {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
+  ];
+  const valid = data.filter(d => d.status === 'verificado').length;
+  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+      disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
+    notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
+      'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+}
+async function fetchBudget(codigo) {
+  for (const year of [2025, 2024]) {
+    try {
+      const u = new URL(SICONFI + '/ords/siconfi/tt/dca');
+      u.searchParams.set('an_exercicio', String(year));
+      u.searchParams.set('no_anexo', 'DCA-Anexo I-E');
+      u.searchParams.set('id_ente', codigo);
+      const response = await json(u.toString(), 14000);
+      const rows = Array.isArray(response?.items) ? response.items : [];
+      if (!rows.length) continue;
+      function get(code) {
+        const matches = rows.filter(x => /despesas liquidadas/i.test(String(x.coluna ?? '')) && String(x.cod_conta ?? '').trim() === 'TotalDespesas' && String(x.rotulo ?? '').includes('Total Geral da Despesa por Função') && new RegExp('^' + code + ' \\- ').test(String(x.conta ?? '').trim()));
+        const values = matches.map(x => numeric(x.valor)).filter(x => x !== null && x >= 0);
+        return values.length === 1 ? values[0] : null; // recusa ambiguidades contábeis
+      }
+      const assist=get('08'), education=get('12'), health=get('10');
+      if ([assist,education,health].some(v=>v!==null)) return {assist,education,health,period:String(year),reference:'DCA-Anexo I-E · despesas liquidadas'};
+    } catch (_err) { /* informa indisponibilidade pelos indicadores, sem inventar valores */ }
+  }
+  return null;
+}
+module.exports = async function handler(req,res) {
+  if (req.method !== 'GET') return res.status(405).json({error:'Método não permitido'});
+  try {
+    const data = await getDiagnosis(req.query.ibge);
+    res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(data);
+  } catch(e) {
+    return res.status(e.status || 502).json({error: e.status ? e.message : 'Não foi possível validar as fontes oficiais agora.',detail: e.status ? undefined : 'Nova tentativa recomendada.'});
+  }
+};
+module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
+module.exports.extractSaneamento=extractSaneamento;
+module.exports.SOURCES = SOURCES;
+,pbf?.period??'—','cgu_beneficios','Somatório mensal da fonte CGU, quando a API autenticada está disponível.'),
+   indicator('suas_bpc_beneficiarios','BPC · beneficiários no mês',bpc?.beneficiaries??null,'pessoas',bpc?.period??'—','cgu_beneficios','Benefício de Prestação Continuada; não equivale ao número de famílias.'),
+   indicator('suas_bpc_valor','BPC · valor mensal dos benefícios',bpc?.amount??null,'R
+  const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
+  data.push(
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
+  if(uf==='PE')data.push(
+    indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
+    indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
+    indicator('caged_saldo_202609','Saldo líquido de emprego formal no mês',caged?.saldo??null,'vínculos','09/2026','caged_pe','Admissões menos desligamentos, inclusive valores negativos; não é estoque de empregos.'),
+    indicator('caged_salario_admissao_202609','Salário médio nominal de admissão',caged?.salario??null,'R$','09/2026','caged_pe','Média de salários nas admissões do período; não equivale ao salário médio de todos os trabalhadores.')
+  );
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+  );
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
+  const modules = [
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
+    {id:'saneamento',name:'Saneamento domiciliar · Censo 2022',status:water&&sewer?'verificado':water||sewer?'parcial':'indisponivel',source:'ibge_esgoto',reason:'Censo 2022, dados de domicílios IBGE/SIDRA 6803 e 6805. Não mede riscos climáticos atuais ou tratamento de água e efluentes.'},
+    {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
+    {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
+    {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
+    {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
+  ];
+  const valid = data.filter(d => d.status === 'verificado').length;
+  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+      disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
+    notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
+      'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+}
+async function fetchBudget(codigo) {
+  for (const year of [2025, 2024]) {
+    try {
+      const u = new URL(SICONFI + '/ords/siconfi/tt/dca');
+      u.searchParams.set('an_exercicio', String(year));
+      u.searchParams.set('no_anexo', 'DCA-Anexo I-E');
+      u.searchParams.set('id_ente', codigo);
+      const response = await json(u.toString(), 14000);
+      const rows = Array.isArray(response?.items) ? response.items : [];
+      if (!rows.length) continue;
+      function get(code) {
+        const matches = rows.filter(x => /despesas liquidadas/i.test(String(x.coluna ?? '')) && String(x.cod_conta ?? '').trim() === 'TotalDespesas' && String(x.rotulo ?? '').includes('Total Geral da Despesa por Função') && new RegExp('^' + code + ' \\- ').test(String(x.conta ?? '').trim()));
+        const values = matches.map(x => numeric(x.valor)).filter(x => x !== null && x >= 0);
+        return values.length === 1 ? values[0] : null; // recusa ambiguidades contábeis
+      }
+      const assist=get('08'), education=get('12'), health=get('10');
+      if ([assist,education,health].some(v=>v!==null)) return {assist,education,health,period:String(year),reference:'DCA-Anexo I-E · despesas liquidadas'};
+    } catch (_err) { /* informa indisponibilidade pelos indicadores, sem inventar valores */ }
+  }
+  return null;
+}
+module.exports = async function handler(req,res) {
+  if (req.method !== 'GET') return res.status(405).json({error:'Método não permitido'});
+  try {
+    const data = await getDiagnosis(req.query.ibge);
+    res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(data);
+  } catch(e) {
+    return res.status(e.status || 502).json({error: e.status ? e.message : 'Não foi possível validar as fontes oficiais agora.',detail: e.status ? undefined : 'Nova tentativa recomendada.'});
+  }
+};
+module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
+module.exports.extractSaneamento=extractSaneamento;
+module.exports.SOURCES = SOURCES;
+,bpc?.period??'—','cgu_beneficios')
+  );
+  data.push(
+   indicator('atlas_idhm','IDHM municipal · Atlas Brasil',null,'índice (0–1)','2010','atlas_pnud','PNUD/Ipea/FJP: série censitária 2010; nenhuma API municipal confiável validada nesta integração.'),
+   indicator('atlas_idhm_educacao','IDHM Educação · Atlas Brasil',null,'índice (0–1)','2010','atlas_pnud'),
+   indicator('atlas_idhm_renda','IDHM Renda · Atlas Brasil',null,'índice (0–1)','2010','atlas_pnud'),
+   indicator('atlas_idhm_longevidade','IDHM Longevidade · Atlas Brasil',null,'índice (0–1)','2010','atlas_pnud'),
+   indicator('atlas_gini','Índice de Gini · Atlas Brasil',null,'índice (0–1)','2010','atlas_pnud','Dados do Atlas têm ano-base 2010, não 2026; integração de extração oficial ainda pendente.'),
+   indicator('mse_adolescentes','Adolescentes atendidos em medidas socioeducativas',null,'pessoas','—','sinase_mdhc','SINASE publica levantamentos nacionais/estaduais; sem API municipal anual padronizada validada. Não extrapolar números estaduais.')
+  );
+  const lines=budgetDetail?.entries||[];
+  for(const row of [
+    ...lines,
+    {id:'pib_municipal_orcamento',label:'PIB municipal (contexto econômico)',value:economic.gdp?.pib??null,unit:'R
+  const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
+  data.push(
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
+  if(uf==='PE')data.push(
+    indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
+    indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
+    indicator('caged_saldo_202609','Saldo líquido de emprego formal no mês',caged?.saldo??null,'vínculos','09/2026','caged_pe','Admissões menos desligamentos, inclusive valores negativos; não é estoque de empregos.'),
+    indicator('caged_salario_admissao_202609','Salário médio nominal de admissão',caged?.salario??null,'R$','09/2026','caged_pe','Média de salários nas admissões do período; não equivale ao salário médio de todos os trabalhadores.')
+  );
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+  );
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
+  const modules = [
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
+    {id:'saneamento',name:'Saneamento domiciliar · Censo 2022',status:water&&sewer?'verificado':water||sewer?'parcial':'indisponivel',source:'ibge_esgoto',reason:'Censo 2022, dados de domicílios IBGE/SIDRA 6803 e 6805. Não mede riscos climáticos atuais ou tratamento de água e efluentes.'},
+    {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
+    {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
+    {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
+    {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
+  ];
+  const valid = data.filter(d => d.status === 'verificado').length;
+  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+      disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
+    notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
+      'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+}
+async function fetchBudget(codigo) {
+  for (const year of [2025, 2024]) {
+    try {
+      const u = new URL(SICONFI + '/ords/siconfi/tt/dca');
+      u.searchParams.set('an_exercicio', String(year));
+      u.searchParams.set('no_anexo', 'DCA-Anexo I-E');
+      u.searchParams.set('id_ente', codigo);
+      const response = await json(u.toString(), 14000);
+      const rows = Array.isArray(response?.items) ? response.items : [];
+      if (!rows.length) continue;
+      function get(code) {
+        const matches = rows.filter(x => /despesas liquidadas/i.test(String(x.coluna ?? '')) && String(x.cod_conta ?? '').trim() === 'TotalDespesas' && String(x.rotulo ?? '').includes('Total Geral da Despesa por Função') && new RegExp('^' + code + ' \\- ').test(String(x.conta ?? '').trim()));
+        const values = matches.map(x => numeric(x.valor)).filter(x => x !== null && x >= 0);
+        return values.length === 1 ? values[0] : null; // recusa ambiguidades contábeis
+      }
+      const assist=get('08'), education=get('12'), health=get('10');
+      if ([assist,education,health].some(v=>v!==null)) return {assist,education,health,period:String(year),reference:'DCA-Anexo I-E · despesas liquidadas'};
+    } catch (_err) { /* informa indisponibilidade pelos indicadores, sem inventar valores */ }
+  }
+  return null;
+}
+module.exports = async function handler(req,res) {
+  if (req.method !== 'GET') return res.status(405).json({error:'Método não permitido'});
+  try {
+    const data = await getDiagnosis(req.query.ibge);
+    res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(data);
+  } catch(e) {
+    return res.status(e.status || 502).json({error: e.status ? e.message : 'Não foi possível validar as fontes oficiais agora.',detail: e.status ? undefined : 'Nova tentativa recomendada.'});
+  }
+};
+module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
+module.exports.extractSaneamento=extractSaneamento;
+module.exports.SOURCES = SOURCES;
+,period:economic.gdp?.year??'—',source:'ibge_pib',note:'PIB municipal NÃO é receita da prefeitura, nem orçamento disponível.'},
+    {id:'pib_percapita_municipal',label:'PIB per capita municipal · referência oficial',value:null,unit:'R
+  const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
+  data.push(
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
+  if(uf==='PE')data.push(
+    indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
+    indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
+    indicator('caged_saldo_202609','Saldo líquido de emprego formal no mês',caged?.saldo??null,'vínculos','09/2026','caged_pe','Admissões menos desligamentos, inclusive valores negativos; não é estoque de empregos.'),
+    indicator('caged_salario_admissao_202609','Salário médio nominal de admissão',caged?.salario??null,'R$','09/2026','caged_pe','Média de salários nas admissões do período; não equivale ao salário médio de todos os trabalhadores.')
+  );
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+  );
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
+  const modules = [
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
+    {id:'saneamento',name:'Saneamento domiciliar · Censo 2022',status:water&&sewer?'verificado':water||sewer?'parcial':'indisponivel',source:'ibge_esgoto',reason:'Censo 2022, dados de domicílios IBGE/SIDRA 6803 e 6805. Não mede riscos climáticos atuais ou tratamento de água e efluentes.'},
+    {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
+    {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
+    {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
+    {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
+  ];
+  const valid = data.filter(d => d.status === 'verificado').length;
+  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+      disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
+    notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
+      'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+}
+async function fetchBudget(codigo) {
+  for (const year of [2025, 2024]) {
+    try {
+      const u = new URL(SICONFI + '/ords/siconfi/tt/dca');
+      u.searchParams.set('an_exercicio', String(year));
+      u.searchParams.set('no_anexo', 'DCA-Anexo I-E');
+      u.searchParams.set('id_ente', codigo);
+      const response = await json(u.toString(), 14000);
+      const rows = Array.isArray(response?.items) ? response.items : [];
+      if (!rows.length) continue;
+      function get(code) {
+        const matches = rows.filter(x => /despesas liquidadas/i.test(String(x.coluna ?? '')) && String(x.cod_conta ?? '').trim() === 'TotalDespesas' && String(x.rotulo ?? '').includes('Total Geral da Despesa por Função') && new RegExp('^' + code + ' \\- ').test(String(x.conta ?? '').trim()));
+        const values = matches.map(x => numeric(x.valor)).filter(x => x !== null && x >= 0);
+        return values.length === 1 ? values[0] : null; // recusa ambiguidades contábeis
+      }
+      const assist=get('08'), education=get('12'), health=get('10');
+      if ([assist,education,health].some(v=>v!==null)) return {assist,education,health,period:String(year),reference:'DCA-Anexo I-E · despesas liquidadas'};
+    } catch (_err) { /* informa indisponibilidade pelos indicadores, sem inventar valores */ }
+  }
+  return null;
+}
+module.exports = async function handler(req,res) {
+  if (req.method !== 'GET') return res.status(405).json({error:'Método não permitido'});
+  try {
+    const data = await getDiagnosis(req.query.ibge);
+    res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(data);
+  } catch(e) {
+    return res.status(e.status || 502).json({error: e.status ? e.message : 'Não foi possível validar as fontes oficiais agora.',detail: e.status ? undefined : 'Nova tentativa recomendada.'});
+  }
+};
+module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
+module.exports.extractSaneamento=extractSaneamento;
+module.exports.SOURCES = SOURCES;
+,period:'—',source:'ibge_pib',note:'Exige PIB e população do mesmo ano-base. Não dividir PIB 2023 por população de 2022/2026.'}
+  ]){
+   data.push(indicator('orcamento_v5_'+row.id,row.label,row.value,row.unit||'R
+  const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
+  data.push(
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
+  if(uf==='PE')data.push(
+    indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
+    indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
+    indicator('caged_saldo_202609','Saldo líquido de emprego formal no mês',caged?.saldo??null,'vínculos','09/2026','caged_pe','Admissões menos desligamentos, inclusive valores negativos; não é estoque de empregos.'),
+    indicator('caged_salario_admissao_202609','Salário médio nominal de admissão',caged?.salario??null,'R$','09/2026','caged_pe','Média de salários nas admissões do período; não equivale ao salário médio de todos os trabalhadores.')
+  );
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+  );
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
+  const modules = [
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
+    {id:'saneamento',name:'Saneamento domiciliar · Censo 2022',status:water&&sewer?'verificado':water||sewer?'parcial':'indisponivel',source:'ibge_esgoto',reason:'Censo 2022, dados de domicílios IBGE/SIDRA 6803 e 6805. Não mede riscos climáticos atuais ou tratamento de água e efluentes.'},
+    {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
+    {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
+    {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
+    {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
+  ];
+  const valid = data.filter(d => d.status === 'verificado').length;
+  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+      disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
+    notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
+      'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+}
+async function fetchBudget(codigo) {
+  for (const year of [2025, 2024]) {
+    try {
+      const u = new URL(SICONFI + '/ords/siconfi/tt/dca');
+      u.searchParams.set('an_exercicio', String(year));
+      u.searchParams.set('no_anexo', 'DCA-Anexo I-E');
+      u.searchParams.set('id_ente', codigo);
+      const response = await json(u.toString(), 14000);
+      const rows = Array.isArray(response?.items) ? response.items : [];
+      if (!rows.length) continue;
+      function get(code) {
+        const matches = rows.filter(x => /despesas liquidadas/i.test(String(x.coluna ?? '')) && String(x.cod_conta ?? '').trim() === 'TotalDespesas' && String(x.rotulo ?? '').includes('Total Geral da Despesa por Função') && new RegExp('^' + code + ' \\- ').test(String(x.conta ?? '').trim()));
+        const values = matches.map(x => numeric(x.valor)).filter(x => x !== null && x >= 0);
+        return values.length === 1 ? values[0] : null; // recusa ambiguidades contábeis
+      }
+      const assist=get('08'), education=get('12'), health=get('10');
+      if ([assist,education,health].some(v=>v!==null)) return {assist,education,health,period:String(year),reference:'DCA-Anexo I-E · despesas liquidadas'};
+    } catch (_err) { /* informa indisponibilidade pelos indicadores, sem inventar valores */ }
+  }
+  return null;
+}
+module.exports = async function handler(req,res) {
+  if (req.method !== 'GET') return res.status(405).json({error:'Método não permitido'});
+  try {
+    const data = await getDiagnosis(req.query.ibge);
+    res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(data);
+  } catch(e) {
+    return res.status(e.status || 502).json({error: e.status ? e.message : 'Não foi possível validar as fontes oficiais agora.',detail: e.status ? undefined : 'Nova tentativa recomendada.'});
+  }
+};
+module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
+module.exports.extractSaneamento=extractSaneamento;
+module.exports.SOURCES = SOURCES;
+,row.period||String(budgetDetail?.year||'—'),row.source||'tesouro_dca',row.note));
+  }
+  const fiscal=budgetDetail?.finances||null;
+  data.push(
+    indicator('orcamento_v5_receita_liquida','Receitas orçamentárias realizadas, líquidas de deduções',fiscal?.revenue??null,'R
+  const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
+  data.push(
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
+  if(uf==='PE')data.push(
+    indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
+    indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
+    indicator('caged_saldo_202609','Saldo líquido de emprego formal no mês',caged?.saldo??null,'vínculos','09/2026','caged_pe','Admissões menos desligamentos, inclusive valores negativos; não é estoque de empregos.'),
+    indicator('caged_salario_admissao_202609','Salário médio nominal de admissão',caged?.salario??null,'R$','09/2026','caged_pe','Média de salários nas admissões do período; não equivale ao salário médio de todos os trabalhadores.')
+  );
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+  );
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
+  const modules = [
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
+    {id:'saneamento',name:'Saneamento domiciliar · Censo 2022',status:water&&sewer?'verificado':water||sewer?'parcial':'indisponivel',source:'ibge_esgoto',reason:'Censo 2022, dados de domicílios IBGE/SIDRA 6803 e 6805. Não mede riscos climáticos atuais ou tratamento de água e efluentes.'},
+    {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
+    {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
+    {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
+    {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
+  ];
+  const valid = data.filter(d => d.status === 'verificado').length;
+  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+      disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
+    notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
+      'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+}
+async function fetchBudget(codigo) {
+  for (const year of [2025, 2024]) {
+    try {
+      const u = new URL(SICONFI + '/ords/siconfi/tt/dca');
+      u.searchParams.set('an_exercicio', String(year));
+      u.searchParams.set('no_anexo', 'DCA-Anexo I-E');
+      u.searchParams.set('id_ente', codigo);
+      const response = await json(u.toString(), 14000);
+      const rows = Array.isArray(response?.items) ? response.items : [];
+      if (!rows.length) continue;
+      function get(code) {
+        const matches = rows.filter(x => /despesas liquidadas/i.test(String(x.coluna ?? '')) && String(x.cod_conta ?? '').trim() === 'TotalDespesas' && String(x.rotulo ?? '').includes('Total Geral da Despesa por Função') && new RegExp('^' + code + ' \\- ').test(String(x.conta ?? '').trim()));
+        const values = matches.map(x => numeric(x.valor)).filter(x => x !== null && x >= 0);
+        return values.length === 1 ? values[0] : null; // recusa ambiguidades contábeis
+      }
+      const assist=get('08'), education=get('12'), health=get('10');
+      if ([assist,education,health].some(v=>v!==null)) return {assist,education,health,period:String(year),reference:'DCA-Anexo I-E · despesas liquidadas'};
+    } catch (_err) { /* informa indisponibilidade pelos indicadores, sem inventar valores */ }
+  }
+  return null;
+}
+module.exports = async function handler(req,res) {
+  if (req.method !== 'GET') return res.status(405).json({error:'Método não permitido'});
+  try {
+    const data = await getDiagnosis(req.query.ibge);
+    res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(data);
+  } catch(e) {
+    return res.status(e.status || 502).json({error: e.status ? e.message : 'Não foi possível validar as fontes oficiais agora.',detail: e.status ? undefined : 'Nova tentativa recomendada.'});
+  }
+};
+module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
+module.exports.extractSaneamento=extractSaneamento;
+module.exports.SOURCES = SOURCES;
+,fiscal?.year?String(fiscal.year):'—','tesouro_dca','DCA Anexo I-C, receitas exceto intraorçamentárias, descontadas deduções explícitas. Não confundir com RCL.'),
+    indicator('orcamento_v5_despesa_liquidada','Despesa liquidada total municipal',fiscal?.expenditure??null,'R
+  const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
+  data.push(
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
+  if(uf==='PE')data.push(
+    indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
+    indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
+    indicator('caged_saldo_202609','Saldo líquido de emprego formal no mês',caged?.saldo??null,'vínculos','09/2026','caged_pe','Admissões menos desligamentos, inclusive valores negativos; não é estoque de empregos.'),
+    indicator('caged_salario_admissao_202609','Salário médio nominal de admissão',caged?.salario??null,'R$','09/2026','caged_pe','Média de salários nas admissões do período; não equivale ao salário médio de todos os trabalhadores.')
+  );
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+  );
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
+  const modules = [
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
+    {id:'saneamento',name:'Saneamento domiciliar · Censo 2022',status:water&&sewer?'verificado':water||sewer?'parcial':'indisponivel',source:'ibge_esgoto',reason:'Censo 2022, dados de domicílios IBGE/SIDRA 6803 e 6805. Não mede riscos climáticos atuais ou tratamento de água e efluentes.'},
+    {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
+    {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
+    {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
+    {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
+  ];
+  const valid = data.filter(d => d.status === 'verificado').length;
+  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+      disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
+    notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
+      'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+}
+async function fetchBudget(codigo) {
+  for (const year of [2025, 2024]) {
+    try {
+      const u = new URL(SICONFI + '/ords/siconfi/tt/dca');
+      u.searchParams.set('an_exercicio', String(year));
+      u.searchParams.set('no_anexo', 'DCA-Anexo I-E');
+      u.searchParams.set('id_ente', codigo);
+      const response = await json(u.toString(), 14000);
+      const rows = Array.isArray(response?.items) ? response.items : [];
+      if (!rows.length) continue;
+      function get(code) {
+        const matches = rows.filter(x => /despesas liquidadas/i.test(String(x.coluna ?? '')) && String(x.cod_conta ?? '').trim() === 'TotalDespesas' && String(x.rotulo ?? '').includes('Total Geral da Despesa por Função') && new RegExp('^' + code + ' \\- ').test(String(x.conta ?? '').trim()));
+        const values = matches.map(x => numeric(x.valor)).filter(x => x !== null && x >= 0);
+        return values.length === 1 ? values[0] : null; // recusa ambiguidades contábeis
+      }
+      const assist=get('08'), education=get('12'), health=get('10');
+      if ([assist,education,health].some(v=>v!==null)) return {assist,education,health,period:String(year),reference:'DCA-Anexo I-E · despesas liquidadas'};
+    } catch (_err) { /* informa indisponibilidade pelos indicadores, sem inventar valores */ }
+  }
+  return null;
+}
+module.exports = async function handler(req,res) {
+  if (req.method !== 'GET') return res.status(405).json({error:'Método não permitido'});
+  try {
+    const data = await getDiagnosis(req.query.ibge);
+    res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(data);
+  } catch(e) {
+    return res.status(e.status || 502).json({error: e.status ? e.message : 'Não foi possível validar as fontes oficiais agora.',detail: e.status ? undefined : 'Nova tentativa recomendada.'});
+  }
+};
+module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
+module.exports.extractSaneamento=extractSaneamento;
+module.exports.SOURCES = SOURCES;
+,fiscal?.year?String(fiscal.year):'—','tesouro_dca','DCA Anexo I-D; não equivale a pagamento.'),
+    indicator('orcamento_v5_investimentos','Investimentos liquidados (categoria econômica)',fiscal?.investments??null,'R
+  const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
+  data.push(
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
+  if(uf==='PE')data.push(
+    indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
+    indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
+    indicator('caged_saldo_202609','Saldo líquido de emprego formal no mês',caged?.saldo??null,'vínculos','09/2026','caged_pe','Admissões menos desligamentos, inclusive valores negativos; não é estoque de empregos.'),
+    indicator('caged_salario_admissao_202609','Salário médio nominal de admissão',caged?.salario??null,'R$','09/2026','caged_pe','Média de salários nas admissões do período; não equivale ao salário médio de todos os trabalhadores.')
+  );
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+  );
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
+  const modules = [
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
+    {id:'saneamento',name:'Saneamento domiciliar · Censo 2022',status:water&&sewer?'verificado':water||sewer?'parcial':'indisponivel',source:'ibge_esgoto',reason:'Censo 2022, dados de domicílios IBGE/SIDRA 6803 e 6805. Não mede riscos climáticos atuais ou tratamento de água e efluentes.'},
+    {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
+    {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
+    {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
+    {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
+  ];
+  const valid = data.filter(d => d.status === 'verificado').length;
+  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+      disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
+    notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
+      'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+}
+async function fetchBudget(codigo) {
+  for (const year of [2025, 2024]) {
+    try {
+      const u = new URL(SICONFI + '/ords/siconfi/tt/dca');
+      u.searchParams.set('an_exercicio', String(year));
+      u.searchParams.set('no_anexo', 'DCA-Anexo I-E');
+      u.searchParams.set('id_ente', codigo);
+      const response = await json(u.toString(), 14000);
+      const rows = Array.isArray(response?.items) ? response.items : [];
+      if (!rows.length) continue;
+      function get(code) {
+        const matches = rows.filter(x => /despesas liquidadas/i.test(String(x.coluna ?? '')) && String(x.cod_conta ?? '').trim() === 'TotalDespesas' && String(x.rotulo ?? '').includes('Total Geral da Despesa por Função') && new RegExp('^' + code + ' \\- ').test(String(x.conta ?? '').trim()));
+        const values = matches.map(x => numeric(x.valor)).filter(x => x !== null && x >= 0);
+        return values.length === 1 ? values[0] : null; // recusa ambiguidades contábeis
+      }
+      const assist=get('08'), education=get('12'), health=get('10');
+      if ([assist,education,health].some(v=>v!==null)) return {assist,education,health,period:String(year),reference:'DCA-Anexo I-E · despesas liquidadas'};
+    } catch (_err) { /* informa indisponibilidade pelos indicadores, sem inventar valores */ }
+  }
+  return null;
+}
+module.exports = async function handler(req,res) {
+  if (req.method !== 'GET') return res.status(405).json({error:'Método não permitido'});
+  try {
+    const data = await getDiagnosis(req.query.ibge);
+    res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(data);
+  } catch(e) {
+    return res.status(e.status || 502).json({error: e.status ? e.message : 'Não foi possível validar as fontes oficiais agora.',detail: e.status ? undefined : 'Nova tentativa recomendada.'});
+  }
+};
+module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
+module.exports.extractSaneamento=extractSaneamento;
+module.exports.SOURCES = SOURCES;
+,fiscal?.year?String(fiscal.year):'—','tesouro_dca','DCA Anexo I-D, código 4.4; não equivale ao total da função social.'),
+    indicator('orcamento_v5_comprometimento_receita_pct','Despesa liquidada / receita realizada (indicador simples)',fiscal?.expenditureShare??null,'%',fiscal?.year?String(fiscal.year):'—','tesouro_dca','Relação ilustrativa entre grupos contábeis; não mede capacidade de endividamento nem limite fiscal legal.'),
+    indicator('orcamento_v5_divida_consolidada','Dívida Consolidada Líquida municipal',null,'R
+  const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
+  data.push(
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
+  if(uf==='PE')data.push(
+    indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
+    indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
+    indicator('caged_saldo_202609','Saldo líquido de emprego formal no mês',caged?.saldo??null,'vínculos','09/2026','caged_pe','Admissões menos desligamentos, inclusive valores negativos; não é estoque de empregos.'),
+    indicator('caged_salario_admissao_202609','Salário médio nominal de admissão',caged?.salario??null,'R$','09/2026','caged_pe','Média de salários nas admissões do período; não equivale ao salário médio de todos os trabalhadores.')
+  );
+  // Os nove dados IVCAD só pertencem ao universo territorial da fonte PE.
+  // Não contar indisponibilidade de PE como falha de cobertura para municípios de outras UFs.
+  if(uf==='PE')data.push(
+    indicator('ivcad_geral','IVCAD · índice geral',ivcad?.geral??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Média das seis dimensões. Quanto mais próximo de 1, maior a vulnerabilidade no universo do indicador; não equivale à proporção de famílias vulneráveis.'),
+    indicator('ivcad_nc','IVCAD · necessidade de cuidados',ivcad?.nc??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dpi','IVCAD · primeira infância',ivcad?.dpi??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_dca','IVCAD · crianças e adolescentes',ivcad?.dca??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_tqa','IVCAD · trabalho e qualificação de adultos',ivcad?.tqa??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe','Índice de vulnerabilidade familiar; NÃO mede admissões, vínculos formais ou taxa de desemprego.'),
+    indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+    indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
+  );
+  const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
+  const modules = [
+    {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'juventude',name:'Juventude de 15 a 29 anos',status:groupOk(['jovens_15_29'])?'verificado':'indisponivel',source:'ibge'},
+    {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
+    {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
+    {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
+    {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
+    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
+    {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
+    {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
+    {id:'saneamento',name:'Saneamento domiciliar · Censo 2022',status:water&&sewer?'verificado':water||sewer?'parcial':'indisponivel',source:'ibge_esgoto',reason:'Censo 2022, dados de domicílios IBGE/SIDRA 6803 e 6805. Não mede riscos climáticos atuais ou tratamento de água e efluentes.'},
+    {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
+    {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
+    {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
+    {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
+  ];
+  const valid = data.filter(d => d.status === 'verificado').length;
+  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+    sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
+      disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
+    notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
+      'Comparações e recomendações dependem de indicadores equivalentes e validados.',
+      'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
+      'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+}
+async function fetchBudget(codigo) {
+  for (const year of [2025, 2024]) {
+    try {
+      const u = new URL(SICONFI + '/ords/siconfi/tt/dca');
+      u.searchParams.set('an_exercicio', String(year));
+      u.searchParams.set('no_anexo', 'DCA-Anexo I-E');
+      u.searchParams.set('id_ente', codigo);
+      const response = await json(u.toString(), 14000);
+      const rows = Array.isArray(response?.items) ? response.items : [];
+      if (!rows.length) continue;
+      function get(code) {
+        const matches = rows.filter(x => /despesas liquidadas/i.test(String(x.coluna ?? '')) && String(x.cod_conta ?? '').trim() === 'TotalDespesas' && String(x.rotulo ?? '').includes('Total Geral da Despesa por Função') && new RegExp('^' + code + ' \\- ').test(String(x.conta ?? '').trim()));
+        const values = matches.map(x => numeric(x.valor)).filter(x => x !== null && x >= 0);
+        return values.length === 1 ? values[0] : null; // recusa ambiguidades contábeis
+      }
+      const assist=get('08'), education=get('12'), health=get('10');
+      if ([assist,education,health].some(v=>v!==null)) return {assist,education,health,period:String(year),reference:'DCA-Anexo I-E · despesas liquidadas'};
+    } catch (_err) { /* informa indisponibilidade pelos indicadores, sem inventar valores */ }
+  }
+  return null;
+}
+module.exports = async function handler(req,res) {
+  if (req.method !== 'GET') return res.status(405).json({error:'Método não permitido'});
+  try {
+    const data = await getDiagnosis(req.query.ibge);
+    res.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=3600');
+    return res.status(200).json(data);
+  } catch(e) {
+    return res.status(e.status || 502).json({error: e.status ? e.message : 'Não foi possível validar as fontes oficiais agora.',detail: e.status ? undefined : 'Nova tentativa recomendada.'});
+  }
+};
+module.exports.getDiagnosis = getDiagnosis;
+module.exports.extractAgeSex=extractAgeSex;
+module.exports.extractSaneamento=extractSaneamento;
+module.exports.SOURCES = SOURCES;
+,'—','tesouro_dca','Exige leitura RGF Anexo 2 validada; DCA função não informa esse dado.')
+  );
+
   // PIB e pessoal assalariado são dados municipais; taxas PNAD são CONTEXTO da UF.
   const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
   data.push(
