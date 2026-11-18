@@ -244,10 +244,29 @@ async function getDiagnosis(code) {
     indicator('orcamento_educacao', 'Despesas liquidadas · Educação', budget?.education ?? null, 'R$', budget?.period ?? '—', 'tesouro'),
     indicator('orcamento_saude', 'Despesas liquidadas · Saúde', budget?.health ?? null, 'R$', budget?.period ?? '—', 'tesouro')
   ];
-  // Perfil econômico municipal e contexto estadual; APIs IBGE consultadas a cada requisição.
+  // PIB e pessoal assalariado são dados municipais; taxas PNAD são CONTEXTO da UF.
   const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
   data.push(
-    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R
+    indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
+    indicator('economia_pib_crescimento_nominal','Variação nominal anual do PIB municipal',p?.growth??null,'%',p?.year??'—','ibge_pib','Comparação com o ano anterior em preços correntes, não significa crescimento real.'),
+    indicator('economia_emprego_assalariado_total','Pessoal ocupado assalariado em unidades locais',sect?.total??null,'vínculos',sect?.year??'—','ibge_cempre','Pessoal assalariado por local de atividade, não equivale à população residente ocupada nem mede desemprego.')
+  );
+  for(let i=0;i<6;i++){
+    const top=sect?.top?.[i]||null;
+    data.push(indicator('economia_setor_emprego_'+(i+1),'Emprego assalariado · '+(top?.name||'setor '+(i+1)),top?.share??null,'%',sect?.year??'—','ibge_cempre',
+      top?'Participação no total municipal de assalariados das unidades locais, '+top.people.toLocaleString('pt-BR')+' pessoas. Não é participação no PIB ou número de oportunidades abertas.':'Sem setor validado nessa posição.'));
+  }
+  const ag=unemp?.age||{};
+  const statePeriod=unemp?.period?(unemp.period.slice(0,4)+' T'+unemp.period.slice(5,6)+' · '+uf+' (UF)'):'—';
+  data.push(
+    indicator('contexto_uf_desocupacao_total','Contexto estadual '+uf+' · taxa de desocupação',unemp?.rate??null,'%',statePeriod,'ibge_pnad_uf','PNAD da UF. Não representa taxa nem número de pessoas desocupadas do município.'),
+    indicator('contexto_uf_desocupacao_14_17','Contexto estadual '+uf+' · desocupação 14–17 anos',ag['14_17']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_18_24','Contexto estadual '+uf+' · desocupação 18–24 anos',ag['18_24']??null,'%',statePeriod,'ibge_pnad_uf','Faixa etária da UF, não do município.'),
+    indicator('contexto_uf_desocupacao_25_39','Contexto estadual '+uf+' · desocupação 25–39 anos',ag['25_39']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_40_59','Contexto estadual '+uf+' · desocupação 40–59 anos',ag['40_59']??null,'%',statePeriod,'ibge_pnad_uf'),
+    indicator('contexto_uf_desocupacao_60mais','Contexto estadual '+uf+' · desocupação 60 anos+',ag['60_mais']??null,'%',statePeriod,'ibge_pnad_uf')
+  );
+  // Novo Caged PE 09/2026 permanece base histórica distinta do CEMPRE dinâmico.
   if(uf==='PE')data.push(
     indicator('caged_admissoes_202609','Admissões formais no mês',caged?.admissoes??null,'vínculos','09/2026','caged_pe','Movimentação Novo Caged ajustada; não equivale a oportunidades de contratação atualmente abertas.'),
     indicator('caged_desligamentos_202609','Desligamentos formais no mês',caged?.desligamentos??null,'vínculos','09/2026','caged_pe'),
