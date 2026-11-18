@@ -11,6 +11,9 @@ function factualAnalysis(d) {
   const n=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1});
   if(youth && youthPercent)facts.push('O Censo 2022 identificou '+n.format(youth.value)+' residentes de 15 a 29 anos ('+n.format(youthPercent.value)+'% da população censitária). Esse contingente não representa automaticamente a demanda por aprendizagem profissional.');
   if(literacy)facts.push('A taxa de alfabetização de pessoas com 15 anos ou mais foi de '+n.format(literacy.value)+'% no Censo 2022. O indicador não informa, isoladamente, conclusão escolar ou necessidade de qualificação profissional.');
+  const idebInitial=find('ideb_iniciais_publica_2025'), idebFinal=find('ideb_finais_publica_2025');
+  if(idebInitial||idebFinal)facts.push('O IDEB 2025 da rede pública municipalmente agregada foi '+(idebInitial?n.format(idebInitial.value):'não publicado')+' nos anos iniciais e '+(idebFinal?n.format(idebFinal.value):'não publicado')+' nos anos finais do ensino fundamental. O índice reflete aprendizagem e fluxo escolar; não mede sozinho vulnerabilidade social.');
+
   if(lowSchool)facts.push('No recorte das pessoas de 18 anos ou mais, '+n.format(lowSchool.value)+'% não tinham concluído o ensino médio em 2022. Esse percentual não mede desemprego, mas pode orientar perguntas para o diagnóstico educacional e produtivo.');
 
   if(find('orcamento_assistencia'))facts.push('A despesa liquidada em Assistência Social indica execução fiscal da função, não disponibilidade imediata de recursos para novas parcerias.');
