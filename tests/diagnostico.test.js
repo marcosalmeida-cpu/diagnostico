@@ -73,3 +73,35 @@ test('PDF é legível, multipágina e não trata lacunas como valor zero',async(
  assert.equal(output[2],68);
  assert.equal(output[3],70);
 });
+
+test('Censo SUAS 2024 - total CRAS coincide com 3 faixas sem inferir famílias atendidas',()=>{
+ const {parseCras,reportUrl}=require('../api/suas');
+ const fake='<html><h1>Ribeirão das Neves</h1><h2>Censo SUAS 2024</h2>'+
+ '<figcaption>Quantidade de CRAS em 2024 em Ribeirão das Neves, por capacidade de referenciamento.</figcaption>'+
+ '<table><thead><tr><th>Capacidade de até:</th><th>Quantidade</th></tr></thead><tbody>'+
+ '<tr><td>2.500 famílias referenciadas</td><td>0</td></tr>'+
+ '<tr><td>3.500 famílias referenciadas</td><td>0</td></tr>'+
+ '<tr><td>5.000 famílias referenciadas</td><td>9</td></tr>'+
+ '</tbody></table></html>';
+ assert.deepEqual(parseCras(fake,'Ribeirão das Neves'),{total:9,ate2500:0,ate3500:0,ate5000:9});
+ assert.equal(parseCras(fake,'Belo Horizonte'),null);
+ assert.equal(parseCras(fake.replace('9</td>','noventa</td>'),'Ribeirão das Neves'),null);
+ assert.match(reportUrl('Ribeirão das Neves','MG'),/^https:\/\/sagicad-mds\.github\.io/);
+ assert.equal(reportUrl('Cidade','XX'),null);
+});
+
+test('Identidade Rede Cidadã 2025 com símbolo original e navegação somente por ícones',()=>{
+ const fs=require('node:fs');
+ const html=fs.readFileSync(require('node:path').join(__dirname,'..','index.html'),'utf8');
+ const css=fs.readFileSync(require('node:path').join(__dirname,'..','styles.css'),'utf8');
+ const svg=fs.readFileSync(require('node:path').join(__dirname,'..','assets','rede-cidada-rostinho.svg'),'utf8');
+ const sidebar=html.match(/<aside class="sidebar"[\s\S]*?<\/aside>/)?.[0];
+ assert.ok(sidebar);
+ assert.match(sidebar,/class="rail-brand"/);
+ assert.match(sidebar,/assets\/rede-cidada-rostinho\.svg/);
+ assert.doesNotMatch(sidebar,/>RC<\/div>|REDE CIDADÃ/);
+ assert.equal((sidebar.match(/class="rail-icon"/g)||[]).length,4);
+ for(const color of ['#0322D6','#65C8F3','#FF001F','#FFC000'])assert.ok(css.includes(color));
+ for(const color of ['#0322D6','#00EBFF','#FF001F','#FFC000'])assert.ok(svg.includes(color));
+ assert.match(html,/<nav class="mobile-tabs" aria-label="Navegação móvel">/);
+});

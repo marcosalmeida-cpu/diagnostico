@@ -62,6 +62,7 @@ function render(d){
  set('#kpiEstimate',fmt(get('populacao_estimativa')));
  set('#kpiYouth',fmt(get('jovens_15_29')));
  set('#kpiLiteracy',fmt(get('alfabetizacao_15mais')));
+ set('#kpiCras',fmt(get('suas_cras_total_2024')));
  set('#kpiPotential',fmt(get('mte_potencial_cota')));
  set('#kpiIdebInitial',fmt(get('ideb_iniciais_publica_2025')));
  set('#kpiIdebFinal',fmt(get('ideb_finais_publica_2025')));
@@ -74,7 +75,7 @@ function render(d){
  const list=qs('#indicatorList');list.replaceChildren();
  let currentGroup='';
  for(const ind of d.indicators){
-  const group=ind.id.startsWith('mte_')?'APRENDIZAGEM PROFISSIONAL · POTENCIAL DE COTA':ind.id.startsWith('orcamento_')?'EXECUÇÃO ORÇAMENTÁRIA':(ind.id.startsWith('jovens_')?'JUVENTUDE':(ind.id.includes('alfabetizacao')||ind.id.includes('medio')||ind.id.includes('superior')||ind.id.startsWith('ideb_'))?'EDUCAÇÃO E ESCOLARIDADE':'PERFIL DEMOGRÁFICO');
+  const group=ind.id.startsWith('suas_')?'PROTEÇÃO SOCIAL · CENSO SUAS 2024':ind.id.startsWith('mte_')?'APRENDIZAGEM PROFISSIONAL · POTENCIAL DE COTA':ind.id.startsWith('orcamento_')?'EXECUÇÃO ORÇAMENTÁRIA':(ind.id.startsWith('jovens_')?'JUVENTUDE':(ind.id.includes('alfabetizacao')||ind.id.includes('medio')||ind.id.includes('superior')||ind.id.startsWith('ideb_'))?'EDUCAÇÃO E ESCOLARIDADE':'PERFIL DEMOGRÁFICO');
   if(group!==currentGroup){const heading=document.createElement('div');heading.className='indicator-group';heading.textContent=group;list.append(heading);currentGroup=group;}
   const line=document.createElement('div');line.className='indicator-line '+(ind.status==='verificado'?'':'unavailable');
   const left=document.createElement('div');const b=document.createElement('b');b.textContent=ind.label;
@@ -137,6 +138,6 @@ qs('#pdfTop').onclick=downloadPdf;qs('#pdfBottom').onclick=downloadPdf;
 const sections=document.querySelectorAll('main section[id]');
 const nav=document.querySelectorAll('.side-nav a');
 if('IntersectionObserver' in window){
- const observer=new IntersectionObserver(items=>{for(const it of items)if(it.isIntersecting)nav.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+it.target.id));},{rootMargin:'-20% 0px -64% 0px'});
+ const observer=new IntersectionObserver(items=>{for(const it of items)if(it.isIntersecting)nav.forEach(a=>{const active=a.getAttribute('href')==='#'+it.target.id;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});},{rootMargin:'-20% 0px -64% 0px'});
  sections.forEach(s=>observer.observe(s));
 }

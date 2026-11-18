@@ -76,3 +76,25 @@ Não configurar credenciais nem dados pessoais no repositório. O PDF e a IA só
 - Chave municipal: combinação exata de UF + nome normalizado pela base oficial de localidades do IBGE, convertida para código IBGE 7 dígitos. **5.518 municípios vinculados**; **52 municípios não encontrados com correspondência exata** permanecem indisponíveis, sem tentativa de inferir o código.
 - O potencial de cota é **potencial normativo estimado**. Não deve ser apresentado como vagas efetivas, contratações efetivadas ou oportunidades disponíveis para a Rede Cidadã.
 - Dados agregados e comprimidos em `data/mte2026/`; sem informações pessoais.
+
+## Identidade visual — Guia da Marca Rede Cidadã, setembro de 2025
+- Fonte de referência: Guia da Marca institucional 2025, fornecido pela Rede Cidadã nesta atualização.
+- Paleta oficial: azul escuro `#0322D6`, azul claro `#65C8F3`, vermelho `#FF001F`, amarelo `#FFC000` (página 7).
+- Tipografia principal: **Roboto**; tipografia de sistema: Open Sans (páginas 8–9).
+- Símbolo (rostinho) extraído **diretamente dos caminhos vetoriais** da página 2 do guia, sem esticar ou modificar geometria, salvo escala proporcional e posição. Arquivo: `assets/rede-cidada-rostinho.svg`.
+- Barra lateral desktop de 80 px: somente símbolo e quatro ícones finos (com `title` e `aria-label`); navegação móvel inferior com ícones e nomes por acessibilidade.
+- Relatório PDF: mesma paleta oficial e símbolo vetorial na capa. Permanecem os controles de rastreabilidade e indisponibilidade.
+
+## Censo SUAS — equipamentos CRAS, competência 2024
+- Publicação oficial MDS/SAGICAD: https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html
+- Fonte: **relatórios municipais dos Indicadores Censo SUAS 2024**, vinculados ao município e UF confirmados previamente na API de localidades do IBGE.
+- São integradas **quatro métricas**: número total de CRAS e distribuição por capacidade de referenciamento para até 2.500, 3.500 e 5.000 famílias.
+- Somamos as três faixas somente após encontrar exatamente os três registros no relatório municipal de 2024 e confirmar a identificação municipal.
+- Esses números **não** são famílias efetivamente atendidas, não medem cobertura suficiente e não substituem inspeção territorial da rede socioassistencial.
+- Falha de consulta, diferença no padrão de publicação ou ausência de tabela mantém os números indisponíveis.
+- O relatório municipal oficial é linkado individualmente na interface para auditoria.
+
+### Próximas integrações — sem inventar dados
+- **Cadastro Único e IVCAD**: consulta pública em https://cecad.cidadania.gov.br/ e https://paineis.mds.gov.br/public/extensions/observatorio-do-cadastro-unico/index.html ; requer processo confiável de captura de agregados municipais, referência e LGPD.
+- **RAIS/Novo Caged**: https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/estatisticas-trabalho ; requer arquivos municipais com controle de competência, ajustes e método.
+- Indicadores da rede SUAS além do total de CRAS: mantidos não integrados até comprovação de acesso e metodologia.
