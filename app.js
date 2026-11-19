@@ -67,7 +67,7 @@ function updateTabStates(){
   const button=qs(selector);
   button.classList.toggle('is-active',enabled);button.setAttribute('aria-pressed',String(enabled));
  }
- qs('#navCaption').textContent=kind==='themes'?'6 eixos':kind==='audiences'?'6 públicos':'3 visões orçamentárias';
+ qs('#navCaption').textContent=kind==='themes'?TAXONOMY.themes.length+' eixos':kind==='audiences'?TAXONOMY.audiences.length+' públicos':TAXONOMY.budgets.length+' visões orçamentárias';
 }
 function appendIndicatorLine(container,item,context=false){
  const line=document.createElement('div');
@@ -213,6 +213,7 @@ function render(d){
   if(url&&/^https:\/\//.test(url)){const anchor=document.createElement('a');anchor.href=url;anchor.target='_blank';anchor.rel='noopener noreferrer';anchor.textContent='Consultar fonte oficial ↗';card.append(anchor);}
   modules.append(card);
  }
+ if(window.RC_STRATEGY_RENDER)window.RC_STRATEGY_RENDER(d);
  qs('#analysisTitle').textContent='Leitura social fundamentada';
  qs('#analysisMode').textContent='Análise ainda não solicitada';
  const body=qs('#analysisBody');body.replaceChildren();
