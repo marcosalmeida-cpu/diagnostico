@@ -68,22 +68,12 @@ function drawProjects(){
  $('projectsCaption').textContent=diagnostic?'Compatibilidade metodológica preliminar para '+diagnostic.municipio.nome+' / '+diagnostic.municipio.uf+'. Avaliar diagnóstico, parceiros e condições de execução.':'Referências institucionais e ideias claramente identificadas como propostas ainda não contratadas.';
 }
 function drawPrison(){
- const host=$('prisonIndicators'),links=$('prisonSources');if(!host||!links)return;
- const ids=['prisional_unidades_estabelecimentos','prisional_capacidade_total','prisional_pessoas_custodiadas','prisional_ocupacao_pct','prisional_educacao_pessoas','prisional_trabalho_pessoas','prisional_egressos_atendidos'];
- const defaultNames=['Unidades prisionais instaladas','Capacidade declarada das unidades','Pessoas custodiadas em unidades locais','Taxa de ocupação dos estabelecimentos','Pessoas custodiadas em atividades educacionais','Pessoas custodiadas em trabalho','Pessoas egressas atendidas por serviços locais'];
- const existing=ids.map((id,i)=>diagnostic?.indicators?.find(x=>x.id===id)||{id,label:defaultNames[i],status:'indisponivel',value:null});
- host.replaceChildren();
- for(const item of existing){
-  const row=el('div',null,'strategy-prison-metric');
-  const left=el('div');left.append(el('b',item.label),el('small',(item.period&&item.period!=='—'?item.period+' · ':'')+'SISDEPEN/SENAPPEN ou CNJ; município de localização da unidade'));
-  row.append(left,el('strong',item.status==='verificado'&&Number.isFinite(item.value)?fmt.format(item.value)+' '+item.unit:'Não integrado'));host.append(row);
- }
+ const links=$('prisonSources');if(!links)return;
  links.replaceChildren();
  for(const s of catalog.prisonSources){
   const entry=el('article',null,'strategy-source');
-  entry.append(el('b',s.name),el('p',s.detail),el('small',s.state),link(s.url,'Consultar base ↗'));links.append(entry);
+  entry.append(el('b',s.name),el('p',s.detail),el('small',s.state),link(s.url,'Consultar base oficial ↗'));links.append(entry);
  }
- $('prisonTerritory').textContent=diagnostic?diagnostic.municipio.nome+' / '+diagnostic.municipio.uf+' · Código IBGE '+diagnostic.municipio.codigoIBGE:'Aguardando município';
 }
 function drawReadiness(){
  const host=$('causeReadiness');if(!host)return;host.replaceChildren();
