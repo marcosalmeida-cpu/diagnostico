@@ -10,6 +10,7 @@ const {getIps2026}=require('../lib/ips-brasil');
 const {getFederalProposals}=require('../lib/propostas-transferegov');
 const {getCadunico}=require('../lib/cadunico-mds');
 const {getEducationFrequency}=require('../lib/educacao-ibge');
+const {getSchoolCensus,percentVariation}=require('../lib/censo-escolar-ibge');
 const {getBenefits}=require('./beneficios-cgu');
 const {getEconomia,getIvcad,getPibPerCapita}=require('./dados-dinamicos');
 const {getByMunicipio:readCagedPE,SOURCE:CAGED_PE_SOURCE}=require('../data/caged2026pe');
@@ -201,7 +202,8 @@ async function getDiagnosis(code) {
     getFiscalBalances(codigo,new Date().getUTCFullYear()-1),
     getFiscalPulse(codigo),
     getFederalProposals(codigo),
-    getEducationFrequency(codigo)
+    getEducationFrequency(codigo),
+    getSchoolCensus(codigo)
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
@@ -235,6 +237,7 @@ async function getDiagnosis(code) {
   const ips2026=getIps2026(codigo);
   const federalProposals=results[18].status==='fulfilled'?results[18].value:null;
   const schoolFrequency=results[19].status==='fulfilled'?results[19].value:null;
+  const schoolCensus=results[20].status==='fulfilled'?results[20].value:null;
   const caged = uf==='PE' ? readCagedPE(codigo) : null;
   const sanitation=extractSaneamento(
     results[8].status==='fulfilled'?results[8].value:null,
@@ -478,6 +481,40 @@ async function getDiagnosis(code) {
       Number.isFinite(rate)?Number((100-rate).toFixed(2)):null,'%','2022','ibge_frequencia_2022',
       'Complemento de 100% da taxa bruta de frequência escolar, restrito à faixa de idade. Não equivale automaticamente a evasão escolar e não é número de pessoas.'));
   }
+  // Inep 2025 (Sinopse) via IBGE/Pesquisa 13: matrículas na rede ESCOLAR LOCAL.
+  const censusFields=[
+    ['infantil','Matrículas · educação infantil','matrículas'],
+    ['creche','Matrículas · creche','matrículas'],
+    ['pre_escola','Matrículas · pré-escola','matrículas'],
+    ['fundamental','Matrículas · ensino fundamental','matrículas'],
+    ['medio','Matrículas · ensino médio','matrículas'],
+    ['docentes_infantil','Funções docentes · educação infantil','funções docentes'],
+    ['docentes_fundamental','Funções docentes · ensino fundamental','funções docentes'],
+    ['docentes_medio','Funções docentes · ensino médio','funções docentes'],
+    ['escolas_infantil','Escolas que oferecem educação infantil','escolas'],
+    ['escolas_creche','Escolas que oferecem creche','escolas'],
+    ['escolas_pre_escola','Escolas que oferecem pré-escola','escolas'],
+    ['escolas_fundamental','Escolas que oferecem ensino fundamental','escolas'],
+    ['escolas_medio','Escolas que oferecem ensino médio','escolas']
+  ];
+  for(const [key,label,unit] of censusFields){
+    const value=schoolCensus?.fields?.[key]?.current;
+    const note=unit==='matrículas'?
+      'Censo Escolar/Inep 2025 (final), sinopse via IBGE Pesquisa 13. Conta matrículas em escolas localizadas no município, não pessoas residentes. Etapas de ensino diferentes não devem ser somadas com educação profissional/EJA sem metodologia.' :
+      unit==='escolas'?
+      'Censo Escolar/Inep 2025 (final), sinopse via IBGE Pesquisa 13. A mesma escola pode ofertar múltiplas etapas: NÃO somar o total de escolas entre etapas.' :
+      'Censo Escolar/Inep 2025 (final), sinopse via IBGE Pesquisa 13. Funções docentes por etapa não equivalem a pessoas únicas e NÃO devem ser somadas como docentes distintos.';
+    data.push(indicator('educacao_inep_2025_'+key,label,value??null,unit,'2025','inep_censo_2025',note));
+  }
+  for(const [key,label] of [
+    ['creche','Variação de matrículas · creche · 2024–2025'],
+    ['pre_escola','Variação de matrículas · pré-escola · 2024–2025'],
+    ['fundamental','Variação de matrículas · ensino fundamental · 2024–2025'],
+    ['medio','Variação de matrículas · ensino médio · 2024–2025']
+  ]){
+    data.push(indicator('educacao_inep_variacao_'+key,label,percentVariation(schoolCensus?.fields?.[key])??null,
+      '%','2024–2025','inep_censo_2025','Variação anual relativa do estoque de matrículas de escolas no município; não representa abandono ou evasão escolar, nem participação dos jovens residentes.'));
+  }
   const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
   const modules = [
     {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
@@ -485,6 +522,7 @@ async function getDiagnosis(code) {
     {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
     {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
     {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'matriculas_2025',name:'Matrículas, escolas e docentes · INEP 2025',status:schoolCensus?'verificado':'indisponivel',source:'inep_censo_2025',reason:'Sinopse INEP 2025 via IBGE/Pesquisa 13. Matrículas em escolas locais, não frequência dos moradores. EJA, educação especial e ensino profissional dependem de agregados diferentes.'},
     {id:'frequencia_escolar',name:'Frequência escolar por faixa etária · Censo 2022',status:schoolFrequency?'verificado':'indisponivel',source:'ibge_frequencia_2022',reason:'Taxa de residentes que frequentavam escola ou creche por idade, 2022. Não confundir com matrículas em escolas locais.'},
     {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
     {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
