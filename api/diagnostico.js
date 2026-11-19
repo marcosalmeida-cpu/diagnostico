@@ -341,7 +341,11 @@ async function getDiagnosis(code) {
     ['dependencia_transferencias','Participação das transferências nas receitas brutas',fiscal?.transferDependency,'%',fiscal?.year,'tesouro_dca','Transferências correntes e de capital / receita bruta (exceto intra), mesma competência.'],
     ['divida_consolidada','Dívida consolidada (DC)',balances?.debt,'R$',balances?.year,'tesouro_rgf','RGF Anexo 02, saldo do último quadrimestre ou semestre do ano.'],
     ['restos_pagar','Restos a pagar · saldo total',balances?.restos,'R$',balances?.year,'tesouro_rreo','RREO Anexo 07: saldo final dos restos processados e não processados, incluindo intraorçamentários.'],
-    ['disponibilidade_caixa','Disponibilidade de caixa bruta (total)',balances?.cash,'R$',balances?.year,'tesouro_rgf','RGF Anexo 05: total (IV), incluindo recursos vinculados e RPPS. Não equivale a recursos livres.']
+    ['disponibilidade_caixa','Disponibilidade de caixa bruta (total)',balances?.cash,'R$',balances?.year,'tesouro_rgf','RGF Anexo 05: total (IV), incluindo recursos vinculados e RPPS. Não equivale a recursos livres.'],
+    ['disponibilidade_caixa_liquida','Disponibilidade de caixa líquida (antes dos restos não processados)',balances?.cashNet,'R$',balances?.year,'tesouro_rgf','RGF Anexo 05: total (IV), após obrigações do demonstrativo; inclui recursos vinculados e RPPS.'],
+    ['restos_pagar_processados','Restos a pagar processados · saldo',balances?.processed,'R$',balances?.year,'tesouro_rreo','RREO Anexo 07, conta total processados e não processados liquidados, saldo a pagar (e).'],
+    ['restos_pagar_nao_processados','Restos a pagar não processados · saldo',balances?.unprocessed,'R$',balances?.year,'tesouro_rreo','RREO Anexo 07, total não processados, saldo a pagar (k).'],
+    ['receita_corrente_liquida_rgf','Receita Corrente Líquida municipal (RCL)',balances?.rcl,'R$',balances?.year,'tesouro_rgf','RGF Anexo 02: RCL no último quadrimestre ou semestre; não equivale a recursos livres.']
   ];
   for(const [id,label,value,unit,period,source,note] of fiscalIndicators)
     data.push(indicator('orcamento_v5_'+id,label,value??null,unit,period?String(period):'—',source,note));
