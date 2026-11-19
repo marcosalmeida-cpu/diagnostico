@@ -44,3 +44,6 @@
 .strategy-cause-status{font-size:10px;font-weight:700;color:#214581}
 @media(max-width:1000px){.strategy-grid{grid-template-columns:1fr}.strategy-prison-panel{grid-template-columns:1fr}.strategy-readiness{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:630px){.strategy-section{padding-top:24px}.strategy-readiness{grid-template-columns:1fr 1fr;gap:7px}.strategy-cause{padding:11px}.strategy-cause b{font-size:10px}.strategy-cause strong{font-size:11px}.strategy-grid{gap:10px}.strategy-card{padding:15px}.strategy-card h3{font-size:14px}.strategy-tools{align-items:stretch}.strategy-tools label,.strategy-tools select{width:100%;max-width:100%}.strategy-prison-metric strong{font-size:10px}.strategy-prison-metric small{font-size:8px}}
+
+@media(max-width:800px){.mobile-tabs{justify-content:space-around;gap:1px;padding-left:4px;padding-right:4px}.mobile-tabs a{min-width:0;flex:1}.mobile-tabs .rail-icon{width:18px;height:18px}.mobile-tabs small{font-size:8px;line-height:1.25}}
+@media(max-width:370px){.mobile-tabs .rail-icon{width:16px;height:16px}.mobile-tabs small{font-size:7px}}
