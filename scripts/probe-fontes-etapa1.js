@@ -11,6 +11,7 @@ const tests=[
  ['pib5964', 'https://apisidra.ibge.gov.br/values/t/5964/n6/3106200/v/38/p/last%201'],
  ['pibPesquisa', 'https://servicodados.ibge.gov.br/api/v1/pesquisas/indicadores/47001/resultados/3106200'],
  ['pibPesquisa38', 'https://servicodados.ibge.gov.br/api/v1/pesquisas/38/indicadores/47001/resultados/3106200'],
+ ['mds-mi-public', 'https://aplicacoes.mds.gov.br/sagi/servicos/misocial?q=*%3A*&wt=json&rows=2&fl=codigo_ibge%2Canomes_s%2Ccadun_qtd_familias_cadastradas_i&fq=codigo_ibge%3A310620&fq=anomes_s%3A202508'],
  ['mds-observatorio', 'https://paineis.mds.gov.br/public/extensions/observatorio-do-cadastro-unico/index.html']
 ];
 async function run([name,url]){
@@ -26,9 +27,9 @@ async function run([name,url]){
   if(name.startsWith('dca')) detail=rows.filter(x=>x.coluna==='Receitas Brutas Realizadas'&&/^RO[12][.]/.test(String(x.cod_conta))).map(x=>[x.cod_conta,x.conta,x.valor]).filter(x=>/^RO1[.][1-9][.]0[.]|^RO2[.][1-9][.]0[.]/.test(x[0])).slice(0,40);
   if(name.startsWith('rgf')||name.startsWith('rreo'))detail={
     accounts:[...new Set(rows.map(x=>x.cod_conta))].filter(x=>name.includes('caixa')?/Disponibilidade|Restos|Total/.test(x):name==='rreo25'?/Saldo|Restos|Total/i.test(x):/Divida|Deduc|RCL|Total/i.test(x)).slice(0,30),
-    totals:rows.filter(x=>name.includes('caixa')?/^TOTAL [(]III[)]/.test(x.conta):name==='rreo25'?/^TOTAL [(]III[)]/.test(x.conta):/DividaConsolidada|ReceitaCorrenteLiquida/i.test(x.cod_conta)).slice(0,20).map(x=>({cod_conta:x.cod_conta,conta:x.conta,coluna:x.coluna,valor:x.valor}))
+    totals:rows.filter(x=>name.includes('caixa')?/^TOTAL/i.test(x.conta):name==='rreo25'?/^TOTAL [(]III[)]/.test(x.conta):/DividaConsolidada|ReceitaCorrenteLiquida/i.test(x.cod_conta)).slice(0,20).map(x=>({cod_conta:x.cod_conta,conta:x.conta,coluna:x.coluna,valor:x.valor}))
   };
-  if(name.startsWith('pibPesquisa'))detail=JSON.stringify(j).slice(0,1600);
+  if(name.startsWith('pibPesquisa')||name==='mds-mi-public')detail=JSON.stringify(j).slice(0,1600);
   return{name,status:r.status,type,count:rows.length,total:j.count??null,hasMore:j.hasMore??null,keys:rows[0]?Object.keys(rows[0]):Object.keys(j).slice(0,10),samples,detail};
  }catch(e){return{name,error:String(e.message).slice(0,140)};}
 }
