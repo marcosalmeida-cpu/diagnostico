@@ -317,7 +317,7 @@ async function getDiagnosis(code) {
   const lines=budgetDetail?.entries||budgetLines.map(([id,label,code,note])=>({id,label,value:null,unit:'R$',period:'—',source:'tesouro_dca',note}));
   const allBudget=[...lines,
     {id:'pib_municipal',label:'PIB municipal (contexto, não receita fiscal)',value:economic.gdp?.pib??null,unit:'R$',period:economic.gdp?.year??'—',source:'ibge_pib',note:'PIB não representa dinheiro do orçamento municipal.'},
-    {id:'pib_percapita',label:'PIB per capita municipal · valor oficial',value:pibPerCapita?.value??null,unit:'R$',period:pibPerCapita?.year??'—',source:'ibge_pib_pc',note:'Valor publicado diretamente pelo IBGE/SIDRA, sem combinar anos distintos.'}
+    {id:'pib_percapita',label:'PIB per capita municipal · valor oficial',value:pibPerCapita?.value??null,unit:'R$',period:pibPerCapita?.year??'—',source:'ibge_pib_pc',note:'Valor publicado na API de Pesquisas do IBGE, indicador 47001; sem combinar anos distintos.'}
   ];
   for(const row of allBudget)data.push(indicator('orcamento_v5_'+row.id,row.label,row.value??null,row.unit||'R$',row.period||String(budgetDetail?.year||'—'),row.source||'tesouro_dca',row.note));
   const fiscal=budgetDetail?.finances||null;
