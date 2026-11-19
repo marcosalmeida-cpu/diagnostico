@@ -14,9 +14,14 @@ async function fetchDca(code,year,annex){
  return Array.isArray(rows)&&rows.length>0&&rows.length<10000?
   rows.filter(x=>String(x.cod_ibge)===code && Number(x.exercicio)===year):[];
 }
+function nonnegative(value){
+ if(value===null||value===undefined||String(value).trim()==='')return null;
+ const n=Number(value);
+ return Number.isFinite(n)&&n>=0?n:null;
+}
 function findUnique(rows,code,col){
  const v=rows.filter(x=>x.cod_conta==='TotalDespesas'&&String(x.conta||'').startsWith(code+' - ')&&x.coluna===col&&x.rotulo==='Total Geral da Despesa por Função')
-  .map(x=>Number(x.valor)).filter(x=>Number.isFinite(x)&&x>=0);
+  .map(x=>nonnegative(x.valor)).filter(x=>x!==null);
  return v.length===1?v[0]:null;
 }
 const budgetLines=[
