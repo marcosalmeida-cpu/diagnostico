@@ -98,6 +98,7 @@
   host.append(warnList);
  }
  function cleanCsv(x){
+  if(typeof x==='number'&&Number.isFinite(x))return String(x).replace('.',',');
   const raw=x===null||x===undefined?'':String(x);
   // Evita que textos de fontes externas sejam interpretados como fórmulas em planilhas.
   const safe=/^[=+@\-\t\r]/.test(raw)?'\u0027'+raw:raw;
