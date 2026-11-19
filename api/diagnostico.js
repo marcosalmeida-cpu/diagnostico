@@ -6,6 +6,7 @@ const {getCras}=require('./suas');
 const {getBudget,budgetLines}=require('./orcamento-publico');
 const {getFiscalBalances}=require('./fiscal-rgf-rreo');
 const {getFiscalPulse}=require('./atividade-fiscal');
+const {getIps2026}=require('./ips-brasil');
 const {getCadunico}=require('./cadunico-mds');
 const {getBenefits}=require('./beneficios-cgu');
 const {getEconomia,getIvcad,getPibPerCapita}=require('./dados-dinamicos');
@@ -20,6 +21,8 @@ function readIdeb2025(code){
 }
 
 const SOURCES = {
+  ips_brasil_2026: {name:'IPS Brasil 2026 · espelho independente (não é API oficial)',url:'https://raw.githubusercontent.com/ernandes-sobreira/IPS-BRASIL/main/conhece_brasil_v1.json'},
+  ips_brasil_oficial: {name:'IPS Brasil · portal oficial de conferência',url:'https://ipsbrasil.org.br/explore/data'},
   ibge: { name: 'IBGE · Censo e estimativas', url: 'https://servicodados.ibge.gov.br/api/docs/' },
   tesouro: { name: 'Tesouro Nacional · SICONFI', url: 'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos' },
   mds: { name: 'MDS · Cadastro Único e IVCAD', url: 'https://www.gov.br/mds/pt-br/orgaos/SAGICAD/dados-e-ferramentas-informacionais/dados-e-ferramentas-do-cadastro-unico/' },
@@ -221,6 +224,7 @@ async function getDiagnosis(code) {
   const cadunico=results[15].status==='fulfilled'?results[15].value:null;
   const balances=results[16].status==='fulfilled'?results[16].value:null;
   const fiscalPulse=results[17].status==='fulfilled'?results[17].value:null;
+  const ips2026=getIps2026(codigo);
   const caged = uf==='PE' ? readCagedPE(codigo) : null;
   const sanitation=extractSaneamento(
     results[8].status==='fulfilled'?results[8].value:null,
@@ -371,6 +375,27 @@ async function getDiagnosis(code) {
   for(const [id,label,unit,source,note] of pendingTerritorial)
     data.push(indicator(id,label,null,unit,'—',source,note));
 
+  // Série IPS 2026: proveniência secundária, verificada contra códigos IBGE.
+  const ipsLabels=[
+    ['ips_2026_geral','IPS Brasil 2026 · Índice de Progresso Social'],
+    ['ips_2026_necessidades','IPS · Necessidades Humanas Básicas'],
+    ['ips_2026_bem_estar','IPS · Fundamentos do Bem-estar'],
+    ['ips_2026_oportunidades','IPS · Oportunidades'],
+    ['ips_2026_nutricao','IPS · Nutrição e Cuidados Médicos Básicos'],
+    ['ips_2026_agua_saneamento','IPS · Água e Saneamento'],
+    ['ips_2026_moradia','IPS · Moradia'],
+    ['ips_2026_seguranca','IPS · Segurança Pessoal'],
+    ['ips_2026_conhecimento','IPS · Acesso ao Conhecimento Básico'],
+    ['ips_2026_informacao','IPS · Acesso à Informação e Comunicação'],
+    ['ips_2026_saude','IPS · Saúde e Bem-estar'],
+    ['ips_2026_meio_ambiente','IPS · Qualidade do Meio Ambiente'],
+    ['ips_2026_direitos','IPS · Direitos Individuais'],
+    ['ips_2026_liberdade','IPS · Liberdades Individuais e de Escolha'],
+    ['ips_2026_inclusao','IPS · Inclusão Social'],
+    ['ips_2026_educacao_superior','IPS · Acesso à Educação Superior']
+  ];
+  for(const [id,label] of ipsLabels)data.push(indicator(id,label,ips2026?.scores?.[id]??null,'pontos (0–100)','2026','ips_brasil_2026',
+    'IPS Brasil 2026 transcrito de espelho independente, cruzado com código oficial IBGE. Conferir ipsbrasil.org.br/explore/data. Edições 2024/2025/2026 não são estritamente comparáveis.'));
   // RREO municipal de competência recente: atividade fiscal, NUNCA PIB corrente.
   const fiscalPeriod=fiscalPulse?String(fiscalPulse.year)+' / '+fiscalPulse.period+'º bimestre':'—';
   const fiscalRows=[
