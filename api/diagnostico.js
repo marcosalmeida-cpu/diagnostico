@@ -9,6 +9,7 @@ const {getFiscalPulse}=require('../lib/atividade-fiscal');
 const {getIps2026}=require('../lib/ips-brasil');
 const {getFederalProposals}=require('../lib/propostas-transferegov');
 const {getCadunico}=require('../lib/cadunico-mds');
+const {getEducationFrequency}=require('../lib/educacao-ibge');
 const {getBenefits}=require('./beneficios-cgu');
 const {getEconomia,getIvcad,getPibPerCapita}=require('./dados-dinamicos');
 const {getByMunicipio:readCagedPE,SOURCE:CAGED_PE_SOURCE}=require('../data/caged2026pe');
@@ -22,6 +23,8 @@ function readIdeb2025(code){
 }
 
 const SOURCES = {
+  ibge_frequencia_2022:{name:'IBGE · Censo Demográfico 2022, frequência escolar (SIDRA 10056)',url:'https://sidra.ibge.gov.br/tabela/10056'},
+  inep_censo_2025:{name:'INEP · Censo Escolar 2025, microdados e sinopses',url:'https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/sinopses-estatisticas/educacao-basica'},
   transferegov_discricionarias: {name:'Transferegov · propostas discricionárias e legais (Atos Preparatórios)',url:'https://api-publica.transferegov.gestao.gov.br/discricionarias/docs'},
   transferegov_parcerias: {name:'Transferegov · propostas no módulo Gestão de Parcerias',url:'https://api-publica.transferegov.gestao.gov.br/parcerias/docs'},
   ips_brasil_2026: {name:'IPS Brasil 2026 · espelho independente (não é API oficial)',url:'https://raw.githubusercontent.com/ernandes-sobreira/IPS-BRASIL/main/conhece_brasil_v1.json'},
@@ -197,7 +200,8 @@ async function getDiagnosis(code) {
     getCadunico(codigo),
     getFiscalBalances(codigo,new Date().getUTCFullYear()-1),
     getFiscalPulse(codigo),
-    getFederalProposals(codigo)
+    getFederalProposals(codigo),
+    getEducationFrequency(codigo)
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
@@ -230,6 +234,7 @@ async function getDiagnosis(code) {
   const fiscalPulse=results[17].status==='fulfilled'?results[17].value:null;
   const ips2026=getIps2026(codigo);
   const federalProposals=results[18].status==='fulfilled'?results[18].value:null;
+  const schoolFrequency=results[19].status==='fulfilled'?results[19].value:null;
   const caged = uf==='PE' ? readCagedPE(codigo) : null;
   const sanitation=extractSaneamento(
     results[8].status==='fulfilled'?results[8].value:null,
@@ -460,6 +465,19 @@ async function getDiagnosis(code) {
     indicator('ivcad_dr','IVCAD · disponibilidade de recursos',ivcad?.dr??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
     indicator('ivcad_ch','IVCAD · condições habitacionais',ivcad?.ch??null,'índice (0–1)',ivcad?.year?String(ivcad.year):'—','ivcad_pe'),
   );
+  // Etapa 3: atendimento escolar por idade entre residentes (IBGE), NÃO matrículas escolares do Inep.
+  const ageBands=[
+    ['99749','0 a 3 anos','0a3'],['47813','4 a 5 anos','4a5'],['31615','6 a 14 anos','6a14'],
+    ['2792','15 a 17 anos','15a17'],['100052','18 a 24 anos','18a24']
+  ];
+  for(const [age,label,suffix] of ageBands){
+    const rate=schoolFrequency?.rates?.[age];
+    data.push(indicator('educacao_frequencia_'+suffix,'Frequência escolar bruta · '+label,rate??null,'%','2022','ibge_frequencia_2022',
+      'Percentual de residentes de '+label+' que frequentavam escola/creche no Censo 2022, tabela 10056. Não é taxa de matrícula no município nem fluxo escolar atual.'));
+    data.push(indicator('educacao_nao_frequencia_'+suffix,'Não frequentavam escola/creche · '+label,
+      Number.isFinite(rate)?Number((100-rate).toFixed(2)):null,'%','2022','ibge_frequencia_2022',
+      'Complemento de 100% da taxa bruta de frequência escolar, restrito à faixa de idade. Não equivale automaticamente a evasão escolar e não é número de pessoas.'));
+  }
   const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
   const modules = [
     {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
@@ -467,6 +485,7 @@ async function getDiagnosis(code) {
     {id:'mulheres',name:'População de mulheres · Censo 2022',status:groupOk(['populacao_mulheres'])?'verificado':'indisponivel',source:'ibge',reason:'Recorte oficial por sexo (mulheres), sem representar automaticamente identidade de gênero ou vulnerabilidade.'},
     {id:'idosos',name:'Pessoas idosas de 60 anos ou mais',status:groupOk(['pessoas_idosas_60mais'])?'verificado':'indisponivel',source:'ibge',reason:'IBGE/SIDRA tabela 9514, soma de faixas quinquenais, Censo 2022.'},
     {id:'educacao',name:'Alfabetização e escolaridade',status:groupOk(['alfabetizacao_15mais','sem_medio_completo_18mais_pct'])?'verificado':'indisponivel',source:'ibge',reason:'Dados censitários de 2022; não incluem IDEB ou matrículas atuais.'},
+    {id:'frequencia_escolar',name:'Frequência escolar por faixa etária · Censo 2022',status:schoolFrequency?'verificado':'indisponivel',source:'ibge_frequencia_2022',reason:'Taxa de residentes que frequentavam escola ou creche por idade, 2022. Não confundir com matrículas em escolas locais.'},
     {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
     {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
     {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
