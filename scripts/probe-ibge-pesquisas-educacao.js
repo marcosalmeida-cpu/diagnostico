@@ -31,3 +31,17 @@ run();
   console.log('EDU3_INEP_VALUES',JSON.stringify({status:rr.status,url,items:data.map(x=>({id:x.id,res:x.res?.[0]?.res}))}).slice(0,8500));
  }catch(e){console.log('EDU3_INEP_ERROR',e.message)}
 })();
+
+(async()=>{
+ try{
+ const j=await (await fetch('https://servicodados.ibge.gov.br/api/v1/pesquisas/13/indicadores',{signal:AbortSignal.timeout(15000)})).json();
+ const flat=[];
+ const walk=(items,parent)=>{for(const x of items){if(String(x.posicao||'').split('.').length<=4)flat.push({id:x.id,name:x.indicador,p:x.posicao,unit:x.unidade?.id,parent,children:x.children?.length});if(x.children?.length)walk(x.children,x.indicador)}};
+ walk(j,'');
+ console.log('EDU3_HIERARCHY',JSON.stringify(flat).slice(0,14500));
+ const ids=flat.filter(x=>x.p?.startsWith('1.3')||x.p?.startsWith('1.2')).map(x=>x.id).slice(0,30);
+ const r=await fetch('https://servicodados.ibge.gov.br/api/v1/pesquisas/13/indicadores/'+ids.join('|')+'/resultados/310620',{signal:AbortSignal.timeout(14000)});
+ const d=await r.json();
+ console.log('EDU3_SCHOOL_RESULTS',JSON.stringify({status:r.status,data:d.map(x=>({id:x.id,value:x.res?.[0]?.res?.['2025']}))}).slice(0,10500));
+ }catch(e){console.log('EDU3_HIERARCHY_ERROR',e.message)}
+})();
