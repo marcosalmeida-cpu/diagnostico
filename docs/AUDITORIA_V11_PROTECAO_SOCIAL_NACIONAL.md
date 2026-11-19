@@ -37,6 +37,9 @@ A consulta federal MDS é feita por município IBGE 6 dígitos, obtido dos prime
 
 - O CECAD 2.0/TABCAD, https://cecad.cidadania.gov.br/tab_cad.php, permite agregados públicos nacionais com filtro por município e marcador de famílias em situação de rua.
 - A chamada automática do TABCAD não foi homologada; consultas diretas retornaram a página de avisos do MDS. O painel permanece com o campo de famílias cadastradas em situação de rua **indisponível**.
+- **Integração histórica validada:** Observatório Brasileiro de Políticas Públicas com a População em Situação de Rua (Polos/UFMG), baseado no Cadastro Único, série nacional 2012–2021. O conjunto abrange **3.870 municípios que apresentaram observações ao longo da série** e **2.962 registros municipais confirmados em 2021**. A planilha municipal de 2021 foi confrontada com a série histórica original. Três códigos (1504752, 4220000, 5006275) aparecem na série, mas não na planilha independente de conferência 2021: seus valores de 2021 foram omitidos, não zerados, mantendo os outros anos. Indicador adicionado ao diagnóstico: `pop_rua_cadunico_2021` (unidade: **pessoas cadastradas**; competência 2021). A fonte histórica não representa total da população nas ruas e não substitui a necessidade do cadastro atualizado.
+- Fonte original e tabelas municipalizadas: https://obpoprua.direito.ufmg.br/repositorio_dados_tabelas.html
+
 - População cadastrada não equivale à população total em situação de rua; pode haver subnotificação.
 - O IBGE disponibiliza página oficial do **Censo Nacional da População em Situação de Rua**, https://www.ibge.gov.br/censo-nacional-pop-rua, ainda em preparação no momento desta revisão. Não existe resultado final universal municipal a integrar como contagem censitária.
 
@@ -59,7 +62,7 @@ A consulta federal MDS é feita por município IBGE 6 dígitos, obtido dos prime
 2. PDF deve manter mapa IBGE na página 2 e a auditoria de fontes; consultas de outro território não podem alterar os valores.
 3. Fonte oficial temporariamente inacessível deve ser representada como nula, com referência e motivo. Nunca como zero.
 4. Toda nova fonte agregada precisa de código IBGE, competência e controles aritméticos e de versão.
-5. Para ter **valores atualizados realmente numéricos para os 5.570 municípios**, falta obter uma publicação nacional com endpoint estruturado acessível ou um extrato oficial estável de abrangência universal. Não afirmar cobertura numérica enquanto esse requisito estiver pendente.
+5. Para ter **valores atuais realmente numéricos para os 5.570 municípios**, mesmo após integrar a fonte histórica UFMG, falta obter uma publicação nacional com endpoint estruturado acessível ou um extrato oficial estável de abrangência universal. Não afirmar cobertura numérica enquanto esse requisito estiver pendente.
 
 ### Fontes verificáveis
 - https://www.gov.br/mds/pt-br/orgaos/SAGICAD/dados-e-ferramentas-informacionais/dados-e-ferramentas-do-cadastro-unico/
