@@ -22,7 +22,7 @@ const SOURCES = {
   mds: { name: 'MDS · Cadastro Único e IVCAD', url: 'https://www.gov.br/mds/pt-br/orgaos/SAGICAD/dados-e-ferramentas-informacionais/dados-e-ferramentas-do-cadastro-unico/' },
   ivcad_pe: { name: 'MDS/Condepe-Fidem · IVCAD PE via API pública', url: 'https://www.cf.pe.gov.br/observatorio/fontes/seplag_ivcad' },
   ivcad_nacional: { name: 'MDS · IVCAD nacional (painel oficial; API não validada)',url:'https://paineis.mds.gov.br/public/extensions/observatorio-do-cadastro-unico/index.html' },
-  ibge_pib_pc: {name:'IBGE/SIDRA · PIB per capita municipal (5964)',url:'https://sidra.ibge.gov.br/tabela/5964'},
+  ibge_pib_pc: {name:'IBGE · Pesquisa PIB per capita municipal (indicador 47001)',url:'https://servicodados.ibge.gov.br/api/v1/pesquisas/indicadores/47001'},
   ibge_pib: { name:'IBGE/SIDRA · PIB municipal (5938)',url:'https://sidra.ibge.gov.br/tabela/5938' },
   ibge_cempre: {name:'IBGE/SIDRA · CEMPRE pessoal assalariado por atividade (9528)',url:'https://sidra.ibge.gov.br/tabela/9528'},
   ibge_pnad_uf: {name:'IBGE/SIDRA · PNAD Contínua desocupação por UF/idade (4094)',url:'https://sidra.ibge.gov.br/tabela/4094'},
