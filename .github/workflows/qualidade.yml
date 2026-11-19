@@ -77,3 +77,6 @@ jobs:
         run: |
           node scripts/probe-mapaosc-rotas.js
           node scripts/probe-cadsuas-post.js
+      - name: Validar diretórios reais MDS e Ipea
+        if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
+        run: node scripts/validar-rede-territorial.js
