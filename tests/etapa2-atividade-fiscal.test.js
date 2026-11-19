@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
-const {parseFiscalPulse,variation}=require('../api/atividade-fiscal');
+const {parseFiscalPulse,variation}=require('../lib/atividade-fiscal');
 const row=(cod_conta,coluna,valor)=>({cod_conta,coluna,valor,rotulo:'Padrão'});
 test('RREO recupera somente contas agregadas do mesmo bimestre',()=>{
  const rows=[

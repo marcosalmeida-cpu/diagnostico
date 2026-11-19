@@ -2,7 +2,7 @@
 
 const {PDFDocument, StandardFonts, rgb} = require('pdf-lib');
 const {getDiagnosis} = require('./diagnostico');
-const {getMunicipalMap} = require('./cartografia-ibge');
+const {getMunicipalMap} = require('../lib/cartografia-ibge');
 const {analyze} = require('./analise');
 
 const A4 = [595.28, 841.89];

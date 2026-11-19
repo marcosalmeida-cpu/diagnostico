@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const {spawnSync}=require('node:child_process');
 const {PDFDocument}=require('pdf-lib');
 const {getDiagnosis}=require('../api/diagnostico');
-const {getMunicipalMap}=require('../api/cartografia-ibge');
+const {getMunicipalMap}=require('../lib/cartografia-ibge');
 const {generate}=require('../api/relatorio');
 async function main(){
  const code='3106200';

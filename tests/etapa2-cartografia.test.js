@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
-const {validateGeometry,validateList}=require('../api/cartografia-ibge');
+const {validateGeometry,validateList}=require('../lib/cartografia-ibge');
 const example={type:'FeatureCollection',features:[{properties:{codarea:'3106200'},geometry:{type:'Polygon',coordinates:[[[-43.99,-19.99],[-43.96,-19.99],[-43.96,-19.95],[-43.99,-19.99]]]}}]};
 test('malha GeoJSON só é aceita quando município e polígonos conferem',()=>{
  const result=validateGeometry(example,'3106200');
