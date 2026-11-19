@@ -60,19 +60,30 @@ def main(serie,check):
         result[code][str(year)]=qty;count+=1
     if len(result)<1200 or count<12000:
         raise ValueError('Cobertura histórica insuficiente: municípios='+str(len(result))+' registros='+str(count))
-    check_records=0
+    check_codes=set()
     for idx,row in enumerate(rows(c)):
         if idx==0:
             if row.get('A')!='codigo_ibg' or row.get('B')!='freq':
                 raise ValueError('Cabeçalho inesperado da conferência 2021')
             continue
         code=row.get('A','');qty=integer(row.get('B',''),'2021')
+        if code in check_codes:raise ValueError('Município repetido na conferência 2021: '+code)
         if result.get(code,{}).get('2021')!=qty:
             raise ValueError('Divergência entre XLSX 2021 e série histórica: '+code)
-        check_records+=1
-    n2021=sum(1 for v in result.values() if '2021' in v)
-    if check_records!=n2021 or n2021<900:
-        raise ValueError('Cobertura 2021 divergente '+str((check_records,n2021)))
+        check_codes.add(code)
+    series_codes={code for code,series in result.items() if '2021' in series}
+    unconfirmed=sorted(series_codes-check_codes)
+    if len(unconfirmed)>5 or len(check_codes)<900:
+        raise ValueError('Cobertura 2021 não homologada '+str((len(check_codes),len(series_codes),unconfirmed[:15])))
+    # As fontes originais divergem em até cinco chaves. Somente 2021 é removido
+    # dos municípios não confirmados na conferência separada. Outros anos ficam.
+    # Ausência NÃO é valor zero e nenhuma informação individual é guardada.
+    for code in unconfirmed:
+        del result[code]['2021']
+    result={code:years for code,years in result.items() if years}
+    n2021=len(check_codes)
+    print('OBPOPRUA_CONCILIATION',json.dumps({'check2021':n2021,'serie2021':len(series_codes),
+      'unconfirmed2021':unconfirmed},ensure_ascii=False))
     sha=lambda path:hashlib.sha256(Path(path).read_bytes()).hexdigest()
     output={
       'source':'Observatório Brasileiro de Políticas Públicas com a População em Situação de Rua · Polos de Cidadania/UFMG',
@@ -80,7 +91,7 @@ def main(serie,check):
       'sourceUrl':SOURCE,'checkUrl':CHECK_2021,
       'sha256Serie':sha(s),'sha2562021':sha(c),
       'startYear':2012,'endYear':2021,'observedMunicipalities':len(result),
-      'observedMunicipalities2021':n2021,'observedRows':count,
+      'observedMunicipalities2021':n2021,'observedRows':count-len(unconfirmed),'unconfirmed2021':unconfirmed,
       'warning':'Somente pessoas em situação de rua cadastradas no CadÚnico, NÃO população total. Ausência de registro municipal não é zero, e 2021 NÃO é dado atual.',
       'municipalities':dict(sorted(result.items()))
     }
