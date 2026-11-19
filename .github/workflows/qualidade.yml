@@ -43,3 +43,18 @@ jobs:
       - name: Gerar relatório real e verificar o mapa na página 2
         if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils && node scripts/validar-etapa2.js
+      - name: Sondar educação e Censo Escolar 2025
+        if: github.ref == 'refs/heads/feat/v9-etapa3-educacao-juventude'
+        continue-on-error: true
+        run: node scripts/probe-etapa3-fontes.js
+      - name: Amostrar dicionário INEP 2025
+        if: github.ref == 'refs/heads/feat/v9-etapa3-educacao-juventude'
+        continue-on-error: true
+        shell: bash
+        run: |
+          curl -fL --retry 1 --max-time 115 'https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2025_.zip' -o /tmp/inep-2025.zip
+          unzip -Z1 /tmp/inep-2025.zip | grep -Ei 'csv|dicion' | head -30
+          for PAT in 'Tabela_Escola_2025_V2.csv' 'Tabela_Matricula_2025_V2.csv'; do
+            NAME="$(unzip -Z1 /tmp/inep-2025.zip | grep -F "$PAT" | head -1)"
+            if [[ -n "$NAME" ]]; then echo "EDU3_HEADER $PAT"; unzip -p /tmp/inep-2025.zip "$NAME" | head -c 16000 | head -n 1 || true; fi
+          done
