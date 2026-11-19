@@ -5,11 +5,19 @@ const ROOT='https://mapaosc.ipea.gov.br/api/api/';
 const validCode=x=>/^[0-9]{7}$/.test(String(x));
 const str=(x,max=250)=>typeof x==='string'?x.replace(/[\u0000-\u001f]/g,' ').trim().slice(0,max):null;
 async function getJson(path){
- const r=await fetch(ROOT+path,{headers:{accept:'application/json'},signal:AbortSignal.timeout(12000)});
- if(!r.ok||!String(r.headers.get('content-type')||'').includes('json'))throw Error('Mapa das OSCs indisponível');
- const raw=await r.text();
- if(raw.length>300000)throw Error('Resposta maior que o permitido');
- return JSON.parse(raw);
+ let last;
+ for(let attempt=0;attempt<3;attempt++){
+  try{
+   const r=await fetch(ROOT+path,{headers:{accept:'application/json','user-agent':'Mozilla/5.0 (compatible; DiagnosticoTerritorial/1.0)'},signal:AbortSignal.timeout(11000)});
+   if(!r.ok){if(r.status>=500||r.status===429)throw Error('HTTP '+r.status);return null;}
+   if(!String(r.headers.get('content-type')||'').includes('json'))return null;
+   const raw=await r.text();
+   if(raw.length>300000)throw Error('Resposta maior que o permitido');
+   return JSON.parse(raw);
+  }catch(e){last=e;}
+  if(attempt<2)await new Promise(resolve=>setTimeout(resolve,175*(attempt+1)));
+ }
+ throw last??Error('Mapa das OSCs temporariamente indisponível');
 }
 function parseList(payload,code,page){
  if(!validCode(code)||!Number.isSafeInteger(payload?.total)||payload.total<0||!Array.isArray(payload?.lista)||payload.lista.length>60)return null;
