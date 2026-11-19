@@ -11,7 +11,7 @@ async function fetchDca(code,year,annex){
  if(!r.ok||!String(r.headers.get('content-type')||'').includes('json'))throw Error('Sem DCA');
  const j=await r.json();
  const rows=j?.items;
- return Array.isArray(rows)&&rows.length>0&&rows.length<10000?
+ return j?.hasMore!==true&&(!Number.isInteger(j.count)||j.count===rows?.length)&&Array.isArray(rows)&&rows.length>0&&rows.length<10000?
   rows.filter(x=>String(x.cod_ibge)===code && Number(x.exercicio)===year):[];
 }
 function nonnegative(value){
@@ -63,8 +63,23 @@ function revenueCategories(rows){
  const taxes=unique('RO1.1.0.0.00.0.0');
  const currentTransfers=unique('RO1.7.0.0.00.0.0');
  const capitalTransfers=unique('RO2.4.0.0.00.0.0');
+ const loans=unique('RO2.1.0.0.00.0.0');
  const transfers=currentTransfers!==null&&capitalTransfers!==null?currentTransfers+capitalTransfers:null;
- return {taxes,currentTransfers,capitalTransfers,transfers};
+ // As contas 1.7.1, 1.7.2, 2.4.1 e 2.4.2 são pais contábeis disjuntos.
+ // Não somar com suas contas-filhas (convênios/FPM/FUNDEB/etc.).
+ const uniCurrent=unique('RO1.7.1.0.00.0.0');
+ const uniCapital=unique('RO2.4.1.0.00.0.0');
+ const stateCurrent=unique('RO1.7.2.0.00.0.0');
+ const stateCapital=unique('RO2.4.2.0.00.0.0');
+ const unionTransfers=uniCurrent!==null&&uniCapital!==null?uniCurrent+uniCapital:null;
+ const stateTransfers=stateCurrent!==null&&stateCapital!==null?stateCurrent+stateCapital:null;
+ const gross=unique('ReceitasExcetoIntraOrcamentarias');
+ // Indicador gerencial AMPLO, que abrange receitas não transferidas,
+ // inclusive alienação de bens; não é receita tributária nem RCL.
+ const ownRevenue=gross!==null&&transfers!==null&&loans!==null&&gross>=transfers+loans?
+ gross-transfers-loans:null;
+ const transferDependency=gross>0&&transfers!==null?transfers/gross*100:null;
+ return {taxes,currentTransfers,capitalTransfers,transfers,unionTransfers,stateTransfers,ownRevenue,transferDependency,gross};
 }
 function finances(income,expense,year){
  const gross=sumUnique(income,'ReceitasExcetoIntraOrcamentarias','Receitas Brutas Realizadas');
