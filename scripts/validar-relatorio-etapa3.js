@@ -20,6 +20,8 @@ async function run(){
  assert(d.audit.verified+d.audit.unavailable===d.audit.total,'Contagem da auditoria inconsistente');
  assert(d.audit.indicators.every(x=>x.status!=='verificado'||Number.isFinite(x.value)),'Valor indisponível indevidamente verificado');
  assert(d.audit.indicators.every(x=>x.consultedAt===d.generatedAt&&x.sourceUpdatedAt===null),'Tempo de consulta foi confundido com atualização da fonte');
+ assert(!d.audit.warnings.some(w=>w.severity==='erro'),'Fonte ausente ou estado inconsistente: '+JSON.stringify(d.audit.warnings.filter(w=>w.severity==='erro').slice(0,5)));
+ console.log('ETAPA4_AUDIT_SUMMARY',JSON.stringify({municipio:d.municipio.codigoIBGE,indicadores:d.audit.total,verificados:d.audit.verified,semDados:d.audit.unavailable,origens:d.audit.sources.length,avisos:d.audit.warnings.slice(0,8),modulosPendentes:d.audit.gaps.map(x=>x.id)}));
  const bytes=await generate(d),pdf=await PDFDocument.load(bytes);
  const dest='/tmp/diagnostico-v9-educacao-bh.pdf';fs.writeFileSync(dest,bytes);
  const t=spawnSync('pdftotext',['-layout',dest,'-'],{encoding:'utf8',timeout:20000});
