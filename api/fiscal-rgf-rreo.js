@@ -19,7 +19,7 @@ async function getRows(kind,code,year,annex,period,frequency='Q'){
  return j.items.filter(x=>String(x.cod_ibge)===code&&Number(x.exercicio)===year&&x.anexo===annex&&Number(x.periodo)===period&&x.rotulo==='Padrão');
 }
 function select(rows,account,column,conta){
- const values=rows.filter(x=>x.cod_conta===account&&x.coluna===column&&(!conta||x.conta===conta)).map(x=>num(x.valor));
+ const values=rows.filter(x=>x.cod_conta===account&&(!column||x.coluna===column)&&(!conta||x.conta===conta)).map(x=>num(x.valor));
  return values.length===1?values[0]:null;
 }
 function parseDebt(rows,period=3,frequency='Q'){
@@ -29,7 +29,7 @@ function parseDebt(rows,period=3,frequency='Q'){
 function parseCash(rows){
  const conta='TOTAL (IV) = (I + II + III)';
  return {cash:select(rows,'DisponibilidadeDeCaixaBruta','DISPONIBILIDADE DE CAIXA BRUTA (a)',conta),
- cashNet:select(rows,'DisponibilidadeDeCaixaLiquida','DISPONIBILIDADE DE CAIXA LÍQUIDA (ANTES DA INSCRIÇÃO EM RESTOS A PAGAR NÃO PROCESSADOS DO EXERCÍCIO) (g) = (a – (b + c + d + e) - f)',conta)};
+ cashNet:select(rows,'DisponibilidadeDeCaixaLiquida',null,conta)};
 }
 function parseRestos(rows){
  const conta='TOTAL (III) = (I + II)';
@@ -38,7 +38,7 @@ function parseRestos(rows){
  unprocessed:select(rows,'RestosAPagarNaoProcessadosAPagar','Saldo k = (f + g) - (i + j)',conta)};
 }
 async function getFiscalBalances(code,year){
- if(!/^\\d{7}$/.test(String(code))||!Number.isInteger(year)||year<2020)return null;
+ if(!/^[0-9]{7}$/.test(String(code))||!Number.isInteger(year)||year<2020)return null;
  const variants=[['Q',3],['S',2]];
  let debt=null,cash=null,frequency=null,period=null;
  for(const [freq,p] of variants){
@@ -54,7 +54,7 @@ async function getFiscalBalances(code,year){
  }
  let restos=null;
  try {restos=parseRestos(await getRows('rreo',code,year,'RREO-Anexo 07',6));}catch(_){}
- if(!debt&&!cash&&!restos?.restos)return null;
+ if(!debt&&!cash&&(restos?.restos===null||restos?.restos===undefined))return null;
  return {year,frequency,period,...debt,...cash,...restos};
 }
 module.exports={getFiscalBalances,parseDebt,parseCash,parseRestos,select};
