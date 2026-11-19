@@ -1,0 +1,32 @@
+name: Preparar snapshot municipal IPS Brasil 2026
+on:
+  push:
+    branches: [feat/v8-etapa2-ips-cartografia]
+    paths:
+      - scripts/build-ips-snapshot.js
+      - .github/workflows/ips2026-snapshot.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar e criar snapshot local
+        run: node scripts/build-ips-snapshot.js
+      - name: Versionar somente dados preparados
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add data/ips2026-snapshot.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data(etapa2): atualizar recorte IPS Brasil 2026 do espelho auditado"
+            git push origin HEAD:feat/v8-etapa2-ips-cartografia
+          fi
