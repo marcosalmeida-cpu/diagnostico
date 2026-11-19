@@ -5,7 +5,7 @@ const SICONFI = 'https://apidatalake.tesouro.gov.br';
 const {getCras}=require('./suas');
 const {getBudget,budgetLines}=require('./orcamento-publico');
 const {getBenefits}=require('./beneficios-cgu');
-const {getEconomia,getIvcad}=require('./dados-dinamicos');
+const {getEconomia,getIvcad,getPibPerCapita}=require('./dados-dinamicos');
 const {getByMunicipio:readCagedPE,SOURCE:CAGED_PE_SOURCE}=require('../data/caged2026pe');
 function readPotential2026(code){
   try{return require('../data/mte2026').getByMunicipio(code);}
@@ -182,7 +182,8 @@ async function getDiagnosis(code) {
     getEconomia(codigo,uf),
     getIvcad(codigo,uf),
     getBudget(codigo),
-    getBenefits(codigo)
+    getBenefits(codigo),
+    getPibPerCapita(codigo)
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
