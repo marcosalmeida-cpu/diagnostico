@@ -54,7 +54,7 @@ function parseBudget(rows,year){
  return {year,entries};
 }
 function sumUnique(rows,cod,col){
- const vals=rows.filter(x=>x.cod_conta===cod&&x.coluna===col).map(x=>Number(x.valor)).filter(x=>Number.isFinite(x)&&x>=0);
+ const vals=rows.filter(x=>x.cod_conta===cod&&x.coluna===col).map(x=>nonnegative(x.valor)).filter(x=>x!==null);
  return vals.length===1?vals[0]:null;
 }
 function finances(income,expense,year){
