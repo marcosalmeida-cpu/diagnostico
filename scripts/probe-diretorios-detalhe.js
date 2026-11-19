@@ -17,12 +17,18 @@ async function probe(){
  for(const type of ['','05','26']){
   params['consultaExternaHelper.tipoEntidade.id']=type;
   const r=await post('pesquisarConsultaExterna.html',params);
+  const rows=r.html.match(/<table[^>]*id=["']entidadeList["'][^>]*>[\s\S]*?<\/table>/i)?.[0]||'';
+  console.log('CADSUAS_ROW_HTML',JSON.stringify({type,head:rows.slice(0,4700)}).slice(0,5200));
   const slice=r.html.slice(r.html.indexOf('d-5461696'),r.html.indexOf('d-5461696')+2200);
   console.log('CADSUAS_LISTA',JSON.stringify({type,status:r.status,length:r.html.length,mentions:r.html.match(/.{0,100}(?:<table|CRAS|CREAS|id=.?resultado|<tbody|visualizarEntidade|codigo=|displaytag|resultado.{0,30}).{0,130}/gi)?.slice(0,15),links:[...r.html.matchAll(/href=["']([^"']*visualizarEntidade[^"']*)/gi)].slice(0,8).map(m=>m[1]),snippet:slice.slice(0,1400)}).slice(0,9000));
   const link=r.html.match(/href=["']([^"']*visualizarEntidadeConsultaExterna[^"']*)/i)?.[1];
   if(link){const dest=new URL(link.replace(/&amp;/g,'&'),base);
     const detail=await fetch(dest,{headers:{cookie},signal:AbortSignal.timeout(14000)}),h=await detail.text();
-    console.log('CADSUAS_DETAIL',JSON.stringify({status:detail.status,len:h.length,link:dest.toString(),headline:h.match(/.{0,80}(?:Endereço e Contatos|Logradouro|Telefone|Email|Bairro).{0,100}/gi)?.slice(0,25)}).slice(0,4800));
+    console.log('CADSUAS_DETAIL',JSON.stringify({status:detail.status,len:h.length,link:dest.toString(),tabs:[...h.matchAll(/href=["']([^"']+)["'][^>]*>[^<]*(?:Endere|Contato)/gi)].map(x=>x[1]).slice(0,8),headline:h.match(/.{0,80}(?:Endereço e Contatos|Logradouro|Telefone|Email|Bairro|aba=).{0,120}/gi)?.slice(0,24)}).slice(0,4800));
+    for(const aba of ['endereco_contatos','endereco','enderecos_contatos']){
+     const zz=await fetch(base+'visualizarEntidadeConsultaExterna.html?aba='+aba+'&codigo='+dest.searchParams.get('codigo'),{headers:{cookie},signal:AbortSignal.timeout(14000)}),hh=await zz.text();
+     console.log('CADSUAS_ABA',JSON.stringify({aba,status:zz.status,len:hh.length,fields:hh.match(/.{0,75}(?:Logradouro|CEP|Telefone|Bairro|Munic|Endere\u00e7o|E-mail).{0,110}/gi)?.slice(0,25)}).slice(0,3400));
+    }
   }
  }
 }
