@@ -52,3 +52,6 @@ jobs:
         if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
         continue-on-error: true
         run: node scripts/probe-etapa2-dados.js
+      - name: Gerar relatório real e verificar o mapa na página 2
+        if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
+        run: node scripts/validar-etapa2.js
