@@ -14,6 +14,6 @@ test('RREO recupera somente contas agregadas do mesmo bimestre',()=>{
 test('dados incompletos nao sao zeros e nao ha divisao por zero',()=>{
  assert.equal(parseFiscalPulse([row('ReceitasExcetoIntraOrcamentarias','Até o Bimestre (c)',100)],2026,4),null);
  assert.equal(parseFiscalPulse([row('ReceitaTributaria','Até o Bimestre (c)',101),row('ReceitasExcetoIntraOrcamentarias','Até o Bimestre (c)',100)],2026,4),null);
- assert.equal(variation(120,100),20);
+ assert.ok(Math.abs(variation(120,100)-20)<1e-10);
  assert.equal(variation(120,0),null);
 });
