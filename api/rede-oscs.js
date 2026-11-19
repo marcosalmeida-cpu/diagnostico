@@ -65,7 +65,7 @@ async function getContact(code,id){
 module.exports=async function handler(req,res){
  if(req.method!=='GET')return res.status(405).json({error:'Método não permitido'});
  const code=String(req.query?.ibge||''),id=Number(req.query?.id),page=Number(req.query?.pagina||1);
- if(!validCode(code)||!Number.isInteger(page)||page<1||page>1000)return res.status(400).json({error:'Município ou página inválidos'});
+ if(!validCode(code)||!Number.isInteger(page)||page<1||page>10000)return res.status(400).json({error:'Município ou página inválidos'});
  try{
   const value=Number.isSafeInteger(id)&&id>=1?await getContact(code,id):await listOSCs(code,page);
   if(!value)return res.status(502).json({error:'A consulta ao Ipea não retornou dados municipais verificáveis.'});
