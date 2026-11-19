@@ -40,7 +40,7 @@ test('todos os indicadores estáticos ou gerados dinamicamente estão mapeados s
  assert.equal(themes.find(x=>x.id==='trabalho').ids.length,25);
  assert.equal(budgets.length,4);
  assert.equal(themes.find(x=>x.id==='clima').ids.length,13);
- assert.equal(audiences.find(x=>x.id==='pop-rua').ids.length,2);
+ assert.equal(audiences.find(x=>x.id==='pop-rua').ids.length,3);
  assert.equal(audiences.find(x=>x.id==='lgbt').ids.length,2);
  assert.equal(audiences.find(x=>x.id==='socioeducativa').ids.length,2);
 });
