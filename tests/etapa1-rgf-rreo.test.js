@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
-const {parseDebt,parseCash,parseRestos,select}=require('../api/fiscal-rgf-rreo');
+const {parseDebt,parseCash,parseRestos,select}=require('../lib/fiscal-rgf-rreo');
 const row=(cod_conta,coluna,conta,valor)=>({cod_conta,coluna,conta,valor});
 test('RGF ano fechado seleciona 3o quadrimestre e DCL permite valores negativos',()=>{
  const rows=[

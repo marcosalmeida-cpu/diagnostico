@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
-const {parseCadunicoResponse,FIELDS}=require('../api/cadunico-mds');
+const {parseCadunicoResponse,FIELDS}=require('../lib/cadunico-mds');
 function response(docs){
  return {responseHeader:{status:0},response:{numFound:docs.length,docs}};
 }

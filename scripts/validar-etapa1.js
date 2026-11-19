@@ -1,9 +1,9 @@
 'use strict';
 // Smoke test de fontes oficiais (sem autenticação e sem gravar dados pessoais).
 const {getBudget}=require('../api/orcamento-publico');
-const {getFiscalBalances}=require('../api/fiscal-rgf-rreo');
+const {getFiscalBalances}=require('../lib/fiscal-rgf-rreo');
 const {getPibPerCapita}=require('../api/dados-dinamicos');
-const {getCadunico}=require('../api/cadunico-mds');
+const {getCadunico}=require('../lib/cadunico-mds');
 const scenarios=[
  {code:'3106200',name:'Belo Horizonte'},
  {code:'2611606',name:'Recife'},

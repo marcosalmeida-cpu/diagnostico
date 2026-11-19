@@ -2,6 +2,7 @@
 
 const {PDFDocument, StandardFonts, rgb} = require('pdf-lib');
 const {getDiagnosis} = require('./diagnostico');
+const {getMunicipalMap} = require('../lib/cartografia-ibge');
 const {analyze} = require('./analise');
 
 const A4 = [595.28, 841.89];
@@ -64,6 +65,7 @@ function text(page,string,x,y,style) {
 }
 function rule(page,y,x=42,w=511){page.drawLine({start:{x,y},end:{x:x+w,y},thickness:1,color:COLORS.line})}
 function sectionOf(id){
+ if(id.startsWith('ips_2026_'))return 'IPS BRASIL 2026 - PROGRESSO SOCIAL';
  if(id.startsWith('orcamento_v5_'))return 'ORÇAMENTO PÚBLICO MUNICIPAL - SICONFI/DCA';
  if(id.startsWith('cadunico_'))return 'CADASTRO ÚNICO - INDICADORES MUNICIPAIS';
  if(id.startsWith('suas_bpc_')||id.startsWith('suas_bolsa_'))return 'BENEFÍCIOS SOCIAIS - CGU';
@@ -87,6 +89,7 @@ function sectionOf(id){
 function formatIndicator(v){
  if(v.value===null||v.value===undefined)return 'Indisponível';
  if(v.unit==='R$')return currency.format(v.value);
+ if(v.unit==='pontos (0–100)')return number.format(v.value)+' / 100 pontos';
  if(v.unit==='índice (0–1)')return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}).format(v.value)+' (0 a 1)';
  const suffix=v.unit==='pessoas'?' pessoas':v.unit==='%'?'%':v.unit==='km²'?' km²':v.unit==='hab./km²'?' hab./km²':v.unit==='postos potenciais'?' postos potenciais':v.unit==='unidades'?' unidades':v.unit==='famílias'?' famílias':v.unit==='domicílios'?' domicílios':'';
  return number.format(v.value)+suffix;
@@ -139,6 +142,74 @@ function cover(pdf,fonts,d,analysis){
  text(p,'Relatório preliminar com informações oficiais, referências, análise social e lacunas explícitas. A interpretação não substitui diagnóstico de campo e decisão técnica institucional.',46,225,{size:11,font:fonts.reg,color:COLORS.white,maxWidth:492,lineHeight:17});
  p.drawText('MODO DE ANÁLISE: '+(analysis.mode==='ia'?'IA ASSISTIVA COM REVISÃO HUMANA':'REGRAS AUDITÁVEIS'),{x:46,y:91,size:9,font:fonts.bold,color:COLORS.green});
  p.drawText('HOMOLOGAÇÃO - NÃO É PARECER DEFINITIVO DE VIABILIDADE',{x:46,y:70,size:8.5,font:fonts.bold,color:COLORS.white});
+}
+// Página 2 do relatório: malha IBGE real, sem atribuir contornos fictícios a regionais.
+function mapPage(pdf,fonts,d,cartography){
+ const view=makePage(pdf,fonts,'Mapa e organização territorial',
+   d.municipio.nome+' / '+d.municipio.uf+' · limites e unidades administrativas oficiais IBGE');
+ const p=view.page;
+ const frame={x:48,y:284,w:499,h:384};
+ p.drawRectangle({x:frame.x,y:frame.y,width:frame.w,height:frame.h,color:COLORS.neutral,borderWidth:1,borderColor:COLORS.line});
+ const g=cartography?.geometry;
+ if(g?.polygons?.length&&g.bounds){
+  const {minLon,maxLon,minLat,maxLat}=g.bounds;
+  const cos=Math.max(.2,Math.cos((minLat+maxLat)/2*Math.PI/180));
+  const geoW=(maxLon-minLon)*cos,geoH=maxLat-minLat;
+  const scale=Math.min((frame.w-38)/geoW,(frame.h-38)/geoH);
+  const offsetX=frame.x+(frame.w-geoW*scale)/2;
+  const offsetY=frame.y+(frame.h-geoH*scale)/2;
+  function xy(point){return {x:offsetX+(point[0]-minLon)*cos*scale,y:offsetY+(point[1]-minLat)*scale}}
+  let drawn=0;
+  for(const polygon of g.polygons)for(const ring of polygon){
+   // Amostragem preservando primeira/última coordenada. Limite para PDF leve.
+   const step=Math.max(1,Math.ceil(ring.length/750));
+   const points=ring.filter((_,i)=>i%step===0||i===ring.length-1);
+   for(let i=1;i<points.length;i++){
+    const a=xy(points[i-1]),b=xy(points[i]);
+    p.drawLine({start:a,end:b,color:COLORS.blue,thickness:1.15});
+    drawn++;
+    if(drawn>4200)break;
+   }
+   if(drawn>4200)break;
+  }
+  const center={x:offsetX+geoW*scale/2,y:offsetY+geoH*scale/2};
+  p.drawCircle({x:center.x,y:center.y,size:3.8,color:COLORS.green,borderColor:COLORS.navy,borderWidth:.8});
+  const mapTitle=d.municipio.nome+' / '+d.municipio.uf;
+  text(p,mapTitle,frame.x+14,frame.y+frame.h-18,{size:11,font:fonts.bold,maxWidth:355,color:COLORS.navy,lineHeight:13});
+  p.drawText('N',{x:frame.x+frame.w-26,y:frame.y+frame.h-26,size:11,font:fonts.bold,color:COLORS.blue});
+  p.drawLine({start:{x:frame.x+frame.w-22,y:frame.y+frame.h-44},end:{x:frame.x+frame.w-22,y:frame.y+frame.h-30},thickness:1.7,color:COLORS.blue});
+  p.drawText('Limite municipal (IBGE)',{x:frame.x+12,y:frame.y+13,size:8,font:fonts.reg,color:COLORS.gray});
+ }else{
+  text(p,'Malha municipal não disponível na consulta ao IBGE. O relatório não substitui o contorno por imagem ilustrativa.',
+   frame.x+24,frame.y+frame.h/2,{size:11,font:fonts.reg,color:COLORS.gray,maxWidth:frame.w-48,lineHeight:16});
+ }
+ let y=268;
+ p.drawText('DISTRITOS OFICIAIS DO IBGE',{x:48,y,size:9.3,font:fonts.bold,color:COLORS.navy});y-=17;
+ function listCompact(items,limit){
+  if(!items.length){y=text(p,'Não retornados na consulta ao IBGE.',48,y,{size:8.1,font:fonts.reg,maxWidth:490,lineHeight:11})-7;return}
+  const shown=items.slice(0,limit),height=Math.ceil(shown.length/2)*12;
+  shown.forEach((v,i)=>{
+   const x=i%2?302:48,yy=y-Math.floor(i/2)*12;
+   const label=clean(v.name);
+   const maxWidth=230;
+   const parts=wrap(label,fonts.reg,8,maxWidth);
+   p.drawText(parts[0]||'',{x,y:yy,size:8,font:fonts.reg,color:COLORS.gray});
+  });
+  y-=height+4;
+  if(items.length>limit){y=text(p,'Mais '+(items.length-limit)+' unidades no cadastro territorial do IBGE.',48,y,{size:7.6,font:fonts.reg,maxWidth:480,lineHeight:10})-7;}
+ }
+ listCompact(cartography?.districts||[],10);
+ y-=5;
+ if(y>113){
+  p.drawText('SUBDISTRITOS CADASTRADOS',{x:48,y,size:9.3,font:fonts.bold,color:COLORS.navy});y-=16;
+  listCompact(cartography?.subdistricts||[],Math.max(0,Math.min(14,2*Math.floor((y-96)/12))));
+ }
+ p.drawText('Contornos internos não disponibilizados pela API consultada; somente o limite municipal é desenhado.',{
+  x:48,y:76,size:7.2,font:fonts.reg,color:COLORS.gray
+ });
+ p.drawText('Fontes: IBGE Malhas v3 e Localidades v1. Sem escalas administrativas inferidas.',{
+  x:48,y:63,size:7.2,font:fonts.reg,color:COLORS.gray
+ });
 }
 function indicatorPages(pdf,fonts,d){
  // Paginação por altura real do conteúdo. Label, procedência e valor ocupam linhas
@@ -263,6 +334,9 @@ async function generate(data){
  pdf.setAuthor('Rede Cidadã - Inteligência Socioterritorial');
  pdf.setSubject('Diagnóstico em homologação, fontes públicas, indicadores e limitações');
  cover(pdf,fonts,data,analysis);
+ let cartography=null;
+ try{cartography=await getMunicipalMap(data.municipio.codigoIBGE);}catch(_){/* gera PDF com lacuna cartográfica explícita */}
+ mapPage(pdf,fonts,data,cartography);
  executivePage(pdf,fonts,data);
  indicatorPages(pdf,fonts,data);
  analysisPages(pdf,fonts,data,analysis);
