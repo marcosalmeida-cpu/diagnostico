@@ -57,6 +57,23 @@ function gdpInfo(data,code){
  if(entries.length>1){const [prevYear,previous]=entries.at(-2);if(+prevYear===+year-1&&num(previous)>0)growth=(value/num(previous)-1)*100}
  return {year,pib:value*1000,growth};
 }
+// PIB per capita: consulta municipal direta ao SIDRA, sem dividir PIB por população de outro ano.
+function parsePibPerCapita(rows,code){
+ if(!Array.isArray(rows)||rows.length<2||!rows[0]||typeof rows[0]!=='object')return null;
+ const candidates=rows.slice(1).filter(r=>String(r.D1C)===String(code)&&String(r.D2C)==='38'&&/^20\\d{2}$/.test(String(r.D3C))&&num(r.V)>0);
+ if(!candidates.length)return null;
+ candidates.sort((a,b)=>Number(b.D3C)-Number(a.D3C));
+ const item=candidates[0];
+ if(candidates.some(r=>String(r.D3C)===String(item.D3C)&&r!==item))return null;
+ return {year:String(item.D3C),value:num(item.V)};
+}
+async function getPibPerCapita(code){
+ if(!validIBGE(code))return null;
+ try{
+  const url='https://apisidra.ibge.gov.br/values/t/5964/n6/'+code+'/v/38/p/last%201';
+  return parsePibPerCapita(await readJson(url),code);
+ }catch(_){return null;}
+}
 function sectorInfo(data,code){
  const entries=classified(data,code,12762),total=entries?.get('117897');
  if(!entries||!total||!Number.isSafeInteger(total.value)||total.value<=0)return null;
@@ -125,4 +142,4 @@ async function getIvcad(code,uf){
  const result=await Promise.allSettled(requests);
  return result.some(x=>x.status!=='fulfilled')?null:parseIvcadResponses(result.map(x=>x.value),code);
 }
-module.exports={getEconomia,getIvcad,parseIvcadResponses,gdpInfo,sectorInfo,unemploymentInfo,readJson};
+module.exports={getPibPerCapita,parsePibPerCapita,getEconomia,getIvcad,parseIvcadResponses,gdpInfo,sectorInfo,unemploymentInfo,readJson};
