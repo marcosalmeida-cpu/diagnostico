@@ -58,20 +58,23 @@ function gdpInfo(data,code){
  return {year,pib:value*1000,growth};
 }
 // PIB per capita: consulta municipal direta ao SIDRA, sem dividir PIB por população de outro ano.
+// O PIB per capita municipal é publicado na API de Pesquisas do IBGE (indicador 47001).
+// O código de localidade dessa API tem seis dígitos; evitar combinar PIB e população de anos diferentes.
 function parsePibPerCapita(rows,code){
- if(!Array.isArray(rows)||rows.length<2||!rows[0]||typeof rows[0]!=='object')return null;
- const candidates=rows.slice(1).filter(r=>String(r.D1C)===String(code)&&String(r.D2C)==='38'&&/^20[0-9]{2}$/.test(String(r.D3C))&&num(r.V)>0);
- if(!candidates.length)return null;
- candidates.sort((a,b)=>Number(b.D3C)-Number(a.D3C));
- const item=candidates[0];
- if(candidates.some(r=>String(r.D3C)===String(item.D3C)&&r!==item))return null;
- return {year:String(item.D3C),value:num(item.V)};
+ if(!validIBGE(code)||!Array.isArray(rows)||rows.length!==1||String(rows[0]?.id)!=='47001')return null;
+ const locations=rows[0]?.res;
+ if(!Array.isArray(locations)||locations.length!==1||String(locations[0]?.localidade)!==String(code).slice(0,6))return null;
+ const series=locations[0]?.res;
+ if(!series||typeof series!=='object'||Array.isArray(series))return null;
+ const valid=Object.entries(series).filter(([year,value])=>/^20[0-9]{2}$/.test(year)&&num(value)>0).sort((a,b)=>b[0].localeCompare(a[0]));
+ if(valid.length===0)return null;
+ const [year,value]=valid[0];
+ return {year,value:num(value)};
 }
 async function getPibPerCapita(code){
  if(!validIBGE(code))return null;
  try{
-  const url='https://apisidra.ibge.gov.br/values/t/5964/n6/'+code+'/v/38/p/last%201';
-  return parsePibPerCapita(await readJson(url),code);
+  return parsePibPerCapita(await readJson(IBGE+'/api/v1/pesquisas/indicadores/47001/resultados/'+code.slice(0,6)),code);
  }catch(_){return null;}
 }
 function sectorInfo(data,code){
