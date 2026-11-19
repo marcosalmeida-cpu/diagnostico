@@ -10,6 +10,7 @@ const {getIps2026}=require('../lib/ips-brasil');
 const {getFederalProposals}=require('../lib/propostas-transferegov');
 const {getCadunico}=require('../lib/cadunico-mds');
 const {getMdsBenefits}=require('../lib/beneficios-mds');
+const {byMunicipio:getPopRuaHistorico}=require('../lib/poprua-ufmg');
 const {getEducationFrequency}=require('../lib/educacao-ibge');
 const {getSchoolCensus,percentVariation}=require('../lib/censo-escolar-ibge');
 const {buildAudit}=require('../lib/auditoria');
@@ -26,6 +27,7 @@ function readIdeb2025(code){
 }
 
 const SOURCES = {
+  poprua_ufmg_historico: {name:'Observatório Pop Rua UFMG · população cadastrada em situação de rua, série nacional 2012–2021',url:'https://obpoprua.direito.ufmg.br/repositorio_dados_tabelas.html'},
   mds_beneficios_misocial: {name:'MDS/MI Social · Bolsa Família e BPC por município (agregado mensal)',url:'https://www.gov.br/mds/pt-br/orgaos/SAGICAD/dados-e-ferramentas-informacionais/dados-e-ferramentas-do-cadastro-unico/'},
   cecad_public: {name:'MDS · CECAD 2.0, CadÚnico e população em situação de rua',url:'https://cecad.cidadania.gov.br/tab_cad.php'},
   rma_meio_aberto: {name:'MDS · Registro Mensal de Atendimentos dos CREAS, LA e PSC',url:'https://aplicacoes.mds.gov.br/snas/inteligencia-suas/RMA/Paineis'},
@@ -247,6 +249,7 @@ async function getDiagnosis(code) {
   const schoolFrequency=results[19].status==='fulfilled'?results[19].value:null;
   const schoolCensus=results[20].status==='fulfilled'?results[20].value:null;
   const mdsBenefits=results[21].status==='fulfilled'?results[21].value:null;
+  const popRuaHistorico=getPopRuaHistorico(codigo,2021);
   const caged = uf==='PE' ? readCagedPE(codigo) : null;
   const sanitation=extractSaneamento(
     results[8].status==='fulfilled'?results[8].value:null,
@@ -330,6 +333,9 @@ async function getDiagnosis(code) {
      id==='cadunico_familias_por100'||id==='cadunico_pessoas_pct'?
      'Numerador: CadÚnico '+cadPeriod+'; denominador: Censo 2022. Anos diferentes, proporção indicativa.':
      'Agregado municipal MDS/MI Social do Cadastro Único. Faixas pobreza, extrema pobreza e total combinado são distintas; não confundir CadÚnico com toda a população de baixa renda. '+(cadunico?'Competência '+cadPeriod+'.':'A API não retornou dados municipais válidos nesta consulta; ausência não é zero.')));
+  data.push(indicator('pop_rua_cadunico_2021','População em situação de rua cadastrada · histórico 2021 (UFMG)',
+   popRuaHistorico?.value??null,'pessoas','2021','poprua_ufmg_historico',
+   'Série nacional 2012–2021, Observatório Pop Rua/Polos UFMG, agregada do CadÚnico. O valor refere-se somente a pessoas cadastradas, não a um censo nem à população total nas ruas. Municípios sem observação ficam indisponíveis, nunca zero. Dados de 2021 NÃO indicam situação atual.'));
   const pbfMds=mdsBenefits?.bolsa??null,bpcMds=mdsBenefits?.bpc??null;
   data.push(indicator('suas_pbf_familias_mds','Bolsa Família · famílias beneficiárias (MDS)',
    pbfMds?.beneficiaries??null,'famílias',pbfMds?.period??'—','mds_beneficios_misocial',
@@ -568,7 +574,7 @@ async function getDiagnosis(code) {
     {id:'rua_censo',name:'Contagem nacional da população em situação de rua',status:'nao_integrado',source:'ibge_censo_rua',reason:'O IBGE prepara o Censo Nacional da População em Situação de Rua; ainda não foi validada divulgação de contagens censitárias municipais. O CadÚnico abrange somente cadastrados e pode subcontar.'},
     {id:'emendas_execucao',name:'Execução financeira e repasses efetivos de emendas',status:'nao_integrado',source:'transferegov',reason:'As contagens atuais do Transferegov são propostas de proponentes cadastrados no município. Empenhos, pagamentos, execução territorial e valores líquidos por emenda ainda exigem conciliação dos instrumentos; propostas não equivalem a recursos liberados.'},
     {id:'educacao_modalidades_2025',name:'EJA, educação profissional e especial · INEP 2025',status:'nao_integrado',source:'inep_censo_2025',reason:'Os microdados oficiais 2025 não puderam ser obtidos com integridade auditada. Sem extração validada não apresentar matrículas dessas modalidades para o município.'},
-    {id:'pop_rua_municipal',name:'População em situação de rua · recorte municipal',status:'nao_integrado',source:'mds',reason:'O cadastro municipal de pessoas e famílias em situação de rua não teve fonte automatizada nacional validada para esta versão. Não inferir total a partir da contagem de equipamentos.'},
+    {id:'pop_rua_municipal',name:'População em situação de rua · recorte municipal',status:popRuaHistorico?'parcial':'nao_integrado',source:popRuaHistorico?'poprua_ufmg_historico':'mds',reason:popRuaHistorico?'Há observação histórica de pessoas cadastradas em 2021 via UFMG, mas não estimativa da população total nem atualização para 2026. Cadastro de famílias em situação de rua permanece sem série automatizada.':'Fonte histórica nacional UFMG não possui observação confirmada para o município em 2021; Cadastro Único atual e censo total não validados. Ausência de registro não é zero.'},
     {id:'riscos_climaticos',name:'Riscos climáticos e desastres por município',status:'nao_integrado',source:'s2id',reason:'Dados de saneamento do Censo 2022 não equivalem a áreas de risco, alertas, eventos ou famílias afetadas. API municipal confiável ainda não integrada.'},
     {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
   ];
