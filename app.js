@@ -84,6 +84,7 @@ function drawPanel(d){
  const group=(TAXONOMY[state.activeKind]||[]).find(g=>g.id===state.activeId)||TAXONOMY.themes[0];
  if(!group)return;
  updateTabStates();
+ const pp=qs('#prisonSourcesPanel');if(pp)pp.hidden=!(state.activeKind==='audiences'&&state.activeId==='prisional');
  qs('#groupKind').textContent=state.activeKind==='themes'?'EIXO TEMÁTICO':state.activeKind==='audiences'?'PÚBLICO PRIORITÁRIO':'ORÇAMENTO PÚBLICO';
  qs('#groupTitle').textContent=group.name;
  qs('#groupDescription').textContent=group.description;
@@ -231,18 +232,18 @@ qs('#analysisBtn').onclick=async()=>{
   if(d.municipio.codigoIBGE!==state.data.municipio.codigoIBGE)throw new Error('Município divergente.');
   state.analysis=d.analysis;
   qs('#analysisTitle').textContent=d.analysis.title;
-  qs('#analysisMode').textContent=d.analysis.mode==='ia'?'Gerada por IA · revisar tecnicamente':'Regras auditáveis · IA generativa não configurada';
+  qs('#analysisMode').textContent='Estudo técnico por público · interpretação fundamentada e auditável';
   const area=qs('#analysisBody');area.replaceChildren();
-  for(const text of d.analysis.paragraphs){const p=document.createElement('p');p.textContent=text;area.append(p);}
+  if(Array.isArray(d.analysis.sections)){for(const section of d.analysis.sections){const article=document.createElement('section');article.className='analysis-public';const h=createText('h3',section.title);article.append(h);for(const paragraph of section.paragraphs||[]){article.append(createText('p',paragraph));}if(section.projects?.length){article.append(createText('strong','Potencialidades a validar','analysis-public-label'));article.append(createText('p',section.projects.map(x=>x.name).join(' · ')));}if(section.funding?.length){article.append(createText('strong','Financiamento a prospectar','analysis-public-label'));article.append(createText('p',section.funding.map(x=>x.name).join(' · ')));}area.append(article);}}else{for(const paragraph of d.analysis.paragraphs){area.append(createText('p',paragraph));}}
   for(const text of d.analysis.limitations){const p=document.createElement('p');p.style.fontSize='10px';p.style.color='#788aa0';p.textContent='Limitação: '+text;area.append(p);}
   status('Leitura social concluída. As interpretações exigem revisão humana antes de subsidiar uma proposta.');
  }catch(err){status(err.message,true)}
- finally{b.disabled=false;b.textContent='✧ Gerar análise social';}
+ finally{b.disabled=false;b.textContent='Gerar estudo por público';}
 };
 async function downloadPdf(){
  if(!state.data)return;
  const buttons=[qs('#pdfBottom')];buttons.forEach(x=>x.disabled=true);
- status('Gerando PDF institucional a partir de nova consulta oficial. Não serão utilizados números manipulados no navegador.');
+ status('Gerando relatório com públicos, interpretação territorial, projetos e canais de financiamento.');
  try{
   const r=await fetch('/api/relatorio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ibge:state.data.municipio.codigoIBGE})});
   if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Não foi possível produzir o relatório.')}
