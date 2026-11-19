@@ -13,12 +13,12 @@ const css=fs.readFileSync(path.join(base,'styles.css'),'utf8');
 const api=fs.readFileSync(path.join(base,'api','diagnostico.js'),'utf8');
 const liveIds=[...api.matchAll(/indicator\('([^']+)'/g)].map(x=>x[1]).filter(id=>!['economia_setor_emprego_','orcamento_v5_','educacao_frequencia_','educacao_nao_frequencia_','educacao_inep_2025_','educacao_inep_variacao_'].includes(id));
 
-test('6 grupos temáticos e 6 públicos, únicos e corretamente rotulados',()=>{
- assert.equal(themes.length,6);
- assert.equal(audiences.length,6);
- assert.deepEqual(themes.map(x=>x.name),['Demografia','Socioeducação','SUAS','Trabalho e Renda','Justiça Climática','Socioaprendizagem']);
- assert.deepEqual(audiences.map(x=>x.name),['POP Rua','Juventude','Pessoas Idosas','LGBTQIAPN+','Mulheres','MSE']);
- assert.equal(new Set([...themes,...audiences].map(x=>x.id)).size,12);
+test('7 grupos temáticos e 7 públicos, únicos e corretamente rotulados',()=>{
+ assert.equal(themes.length,7);
+ assert.equal(audiences.length,7);
+ assert.deepEqual(themes.map(x=>x.name),['Demografia','Socioeducação','SUAS','Trabalho e Renda','Justiça Climática','Sistema Prisional','Socioaprendizagem']);
+ assert.deepEqual(audiences.map(x=>x.name),['POP Rua','Juventude','Pessoas Idosas','LGBTQIAPN+','Mulheres','Egressos','MSE']);
+ assert.equal(new Set([...themes,...audiences].map(x=>x.id)).size,14);
  for(const group of [...themes,...audiences]){
   assert.ok(group.description.length>30);
   assert.ok(Array.isArray(group.ids)&&Array.isArray(group.pending));
@@ -33,7 +33,8 @@ test('todos os indicadores estáticos ou gerados dinamicamente estão mapeados s
  const generatedFrequency=['0a3','4a5','6a14','15a17','18a24'].flatMap(age=>['educacao_frequencia_'+age,'educacao_nao_frequencia_'+age]);
  const generatedInep=[...Object.keys(censoFields).map(x=>'educacao_inep_2025_'+x),...['creche','pre_escola','fundamental','medio'].map(x=>'educacao_inep_variacao_'+x)];
  const generatedV6=['clima_desastres','clima_afetados','clima_alertas','clima_areas_risco','pop_rua_atendimento','mse_meio_aberto','lgbt_servicos','lgbt_denuncias'];
- const known=new Set([...liveIds,...dynamicIds,...dynamicSuas,...generatedV6,...generatedPulse,...generatedFrequency,...generatedInep,...ipsIds,...budgets.flatMap(x=>x.ids)]);
+ const justiceIds=['prisional_unidades_estabelecimentos','prisional_capacidade_total','prisional_pessoas_custodiadas','prisional_ocupacao_pct','prisional_educacao_pessoas','prisional_trabalho_pessoas','prisional_egressos_atendidos'];
+  const known=new Set([...liveIds,...justiceIds,...dynamicIds,...dynamicSuas,...generatedV6,...generatedPulse,...generatedFrequency,...generatedInep,...ipsIds,...budgets.flatMap(x=>x.ids)]);
  const reachable=new Set([...themes,...audiences,...budgets].flatMap(x=>[...x.ids,...(x.contextIds||[])]));
  for(const id of liveIds)assert.ok(reachable.has(id),id+' perdido da taxonomia');
  for(const g of [...themes,...audiences,...budgets])for(const id of [...g.ids,...(g.contextIds||[])])assert.ok(known.has(id),id+' não existe na API');
@@ -42,7 +43,9 @@ test('todos os indicadores estáticos ou gerados dinamicamente estão mapeados s
  assert.equal(themes.find(x=>x.id==='clima').ids.length,13);
  assert.equal(audiences.find(x=>x.id==='pop-rua').ids.length,3);
  assert.equal(audiences.find(x=>x.id==='lgbt').ids.length,2);
- assert.equal(audiences.find(x=>x.id==='socioeducativa').ids.length,2);
+ assert.equal(audiences.find(x=>x.id==='socioeducativa').ids.length,4);
+  assert.equal(audiences.find(x=>x.id==='egressos').ids.length,3);
+  assert.equal(themes.find(x=>x.id==='prisional').ids.length,7);
 });
 test('layout compacto mantém navegação acessível e controles ativos',()=>{
  for(const id of ['switchThemes','switchAudiences','activeTabs','integrityDisclosure','activePanel','featuredMetrics','groupTitle','groupDescription','groupStatus','indicatorList','indicatorCount','showAllBtn','groupGaps','coverage','coverageBar','moduleList','switchBudget','rateUnemployment','rateInformality','ratePoverty','pdfBottom'])assert.ok(html.includes('id="'+id+'"'),id+' ausente');
