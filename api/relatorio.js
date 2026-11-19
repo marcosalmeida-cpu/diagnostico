@@ -5,6 +5,7 @@ const {getDiagnosis} = require('./diagnostico');
 const {getMunicipalMap} = require('../lib/cartografia-ibge');
 const {analyze} = require('./analise');
 const {buildAudit}=require('../lib/auditoria');
+const catalog=require('../estrategia-catalogo');
 
 const A4 = [595.28, 841.89];
 // Paleta Rede Cidadã / Guia da Marca - setembro de 2025.
@@ -71,7 +72,9 @@ function sectionOf(id){
  if(id.startsWith('cadunico_'))return 'CADASTRO ÚNICO - INDICADORES MUNICIPAIS';
  if(id.startsWith('suas_bpc_')||id.startsWith('suas_bolsa_'))return 'BENEFÍCIOS SOCIAIS - CGU';
  if(id.startsWith('atlas_'))return 'ATLAS BRASIL/PNUD - INDICADORES HISTÓRICOS';
- if(id.startsWith('mse_sinase_'))return 'MEDIDAS SOCIOEDUCATIVAS - SINASE';
+ if(id.startsWith('mse_'))return 'MEDIDAS SOCIOEDUCATIVAS - LA, PSC E SINASE';
+ if(id.startsWith('prisional_'))return 'SISTEMA PRISIONAL - PESSOAS CUSTODIADAS E EGRESSAS';
+ if(id.startsWith('pop_rua_'))return 'POPULAÇÃO EM SITUAÇÃO DE RUA - HISTÓRICO DE CADASTRO';
  if(id.startsWith('contexto_uf_'))return 'CONTEXTO MACROECONÔMICO ESTADUAL - PNAD';
  if(id.startsWith('economia_setor_')||id==='economia_emprego_assalariado_total')return 'ESTRUTURA SETORIAL DO EMPREGO ASSALARIADO - CEMPRE';
  if(id.startsWith('economia_pib_'))return 'ECONOMIA MUNICIPAL - PIB NOMINAL';
@@ -141,7 +144,7 @@ function cover(pdf,fonts,d,analysis){
  p.drawText('Indicadores do recorte demonstrativo',{x:196,y:322,size:10,font:fonts.reg,color:COLORS.white});
  p.drawText('Ausência de dado não equivale a valor zero.',{x:65,y:287,size:10,font:fonts.reg,color:COLORS.white});
  text(p,'Relatório preliminar com informações oficiais, referências, análise social e lacunas explícitas. A interpretação não substitui diagnóstico de campo e decisão técnica institucional.',46,225,{size:11,font:fonts.reg,color:COLORS.white,maxWidth:492,lineHeight:17});
- p.drawText('MODO DE ANÁLISE: '+(analysis.mode==='ia'?'IA ASSISTIVA COM REVISÃO HUMANA':'REGRAS AUDITÁVEIS'),{x:46,y:91,size:9,font:fonts.bold,color:COLORS.green});
+ p.drawText('MODO DE ANÁLISE: '+'ESTUDO TERRITORIAL POR PÚBLICOS',{x:46,y:91,size:9,font:fonts.bold,color:COLORS.green});
  p.drawText('HOMOLOGAÇÃO - NÃO É PARECER DEFINITIVO DE VIABILIDADE',{x:46,y:70,size:8.5,font:fonts.bold,color:COLORS.white});
 }
 // Página 2 do relatório: malha IBGE real, sem atribuir contornos fictícios a regionais.
@@ -285,7 +288,7 @@ function analysisPages(pdf,fonts,d,analysis){
  let view=makePage(pdf,fonts,'Leitura técnica e análise social','Interpretação fundamentada nos indicadores disponíveis');
  let {page:p}=view,y=view.y;
  p.drawText('MÉTODO: '+(analysis.mode==='ia'?'ANÁLISE ASSISTIDA POR IA':'SÍNTESE DETERMINÍSTICA'),{x:44,y,size:9,font:fonts.bold,color:COLORS.blue});y-=30;
- const blocks=Array.isArray(analysis.paragraphs)?analysis.paragraphs:[];
+ const blocks=Array.isArray(analysis.sections)?analysis.sections.flatMap(sec=>[...sec.paragraphs.map((p,i)=>i===0?sec.title.toUpperCase()+' - '+p:p),'PROJETOS CONVERGENTES A VALIDAR - '+sec.projects.map(x=>x.name).join('; ')+'.','FINANCIAMENTO POSSÍVEL - '+sec.funding.map(x=>x.name).join('; ')+'.']):Array.isArray(analysis.paragraphs)?analysis.paragraphs:[];
  for(const paragraph of blocks){
   const rows=wrap(paragraph,fonts.reg,10.5,493),height=rows.length*16+18;
   if(y-height<80){view=makePage(pdf,fonts,'Leitura técnica (continuação)',d.municipio.nome+' / '+d.municipio.uf);p=view.page;y=view.y;}
@@ -299,6 +302,44 @@ function analysisPages(pdf,fonts,d,analysis){
   if(y-(rows.length*14+wrap(recommendation.title+' · '+recommendation.priority,fonts.bold,10,499).length*13+24)<78){view=makePage(pdf,fonts,'Propostas de aprofundamento (continuação)',d.municipio.nome);p=view.page;y=view.y;}
   y=text(p,clean(recommendation.title)+' · '+clean(recommendation.priority),44,y,{size:10,font:fonts.bold,color:COLORS.blue,maxWidth:499,lineHeight:13})-6;
   y=text(p,recommendation.reason,44,y,{size:9.5,font:fonts.reg,maxWidth:484,lineHeight:14,color:COLORS.gray})-10;
+ }
+}
+/* Complemento editorial do PDF: todas as oportunidades devem ter fonte e
+   condições declaradas; a paginação evita cortes de links longos. */
+function strategyPages(pdf,fonts,d){
+ let title='Projetos convergentes',view=makePage(pdf,fonts,title,'Convergência metodológica, públicos e evidências territoriais');
+ let p=view.page,y=view.y;
+ function newPage(){view=makePage(pdf,fonts,title+' (continuação)',d.municipio.nome+' / '+d.municipio.uf);p=view.page;y=view.y;}
+ function line(value,opts={}){
+  const size=opts.size||9,font=opts.bold?fonts.bold:fonts.reg,color=opts.color||COLORS.ink,leading=size*1.5;
+  for(const row of wrap(value,font,size,495)){
+   if(y-leading<76)newPage();
+   p.drawText(row,{x:45,y,size,font,color});y-=leading;
+  }
+  const gap=opts.gap===undefined?10:opts.gap;
+  if(y-gap<76)newPage();else y-=gap;
+ }
+ function label(value){if(y<145)newPage();line(value,{size:11.3,bold:true,color:COLORS.blue,gap:8});}
+ line('Referências e hipóteses técnicas, não projetos automaticamente aprovados ou em execução neste município. Cada proposta requer escuta territorial, plano de trabalho e análise da capacidade local.',{size:9,color:COLORS.gray,gap:15});
+ for(const item of catalog.match(d,catalog.projects)){
+  label(item.name);
+  line('Situação institucional: '+item.status,{size:8.6,bold:true,color:COLORS.blue,gap:5});
+  line('Público: '+item.audience+'. '+item.description,{size:9,gap:7});
+  if(item.verified.length)line('Evidências de contexto: '+item.verified.slice(0,3).map(x=>x.label+' ('+(x.period||'competência indisponível')+')').join('; ')+'.',{size:8.3,color:COLORS.gray,gap:6});
+  else line('Sem indicador municipal direto confirmado para esta proposta nesta consulta.',{size:8.4,color:COLORS.gray,gap:6});
+  line('Condição de adaptação: '+item.caution,{size:8.7,color:COLORS.gray,gap:7});
+  line('Fontes de financiamento a prospectar: '+item.funds.map(id=>catalog.sources.find(x=>x.id===id)?.name).filter(Boolean).join('; ')+'.',{size:8.7,bold:true,color:COLORS.blue,gap:14});
+ }
+ title='Fontes de financiamento';view=makePage(pdf,fonts,title,'Mecanismos potenciais, requisitos e endereços oficiais');p=view.page;y=view.y;
+ line('ATENÇÃO: fontes listadas não constituem chamamentos abertos, contratos, repasses assegurados ou autorização automática para OSC. Consultar regulamentos, editais e habilitação.',{size:9,color:COLORS.gray,gap:15});
+ for(const item of catalog.match(d,catalog.sources)){
+  label(item.name);
+  line('Público e causa: '+item.audience,{size:9,gap:5});
+  line('Possibilidade: '+item.mechanism,{size:9,gap:7});
+  line('Critérios e limitações: '+item.qualification,{size:9,color:COLORS.gray,gap:8});
+  line('Fonte de consulta: '+item.url,{size:8.2,color:COLORS.blue,gap:9});
+  if(item.verified.length)line('Indicadores de contexto municipal: '+item.verified.slice(0,3).map(x=>x.label+' ('+(x.period||'sem competência')+')').join('; ')+'.',{size:8.3,color:COLORS.gray,gap:11});
+  else line('Hipótese temática, sem indicador direto confirmado para esta causa.',{size:8.3,color:COLORS.gray,gap:12});
  }
 }
 function auditPages(pdf,fonts,d){
@@ -370,7 +411,7 @@ async function generate(data){
  const analysis=await analyze(data);
  pdf.setTitle('Diagnóstico Territorial - '+data.municipio.nome+' / '+data.municipio.uf);
  pdf.setAuthor('Rede Cidadã - Inteligência Socioterritorial');
- pdf.setSubject('Diagnóstico em homologação, fontes públicas, indicadores e limitações');
+ pdf.setSubject('Análise por públicos, projetos convergentes, financiamento potencial e fontes oficiais');
  cover(pdf,fonts,data,analysis);
  let cartography=null;
  try{cartography=await getMunicipalMap(data.municipio.codigoIBGE);}catch(_){/* gera PDF com lacuna cartográfica explícita */}
@@ -378,6 +419,7 @@ async function generate(data){
  executivePage(pdf,fonts,data);
  indicatorPages(pdf,fonts,data);
  analysisPages(pdf,fonts,data,analysis);
+ strategyPages(pdf,fonts,data);
  auditPages(pdf,fonts,data);
  sourcesPages(pdf,fonts,data,analysis);
  const pages=pdf.getPages();
