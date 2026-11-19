@@ -4,8 +4,10 @@ const IBGE = 'https://servicodados.ibge.gov.br';
 const SICONFI = 'https://apidatalake.tesouro.gov.br';
 const {getCras}=require('./suas');
 const {getBudget,budgetLines}=require('./orcamento-publico');
+const {getFiscalBalances}=require('./fiscal-rgf-rreo');
+const {getCadunico}=require('./cadunico-mds');
 const {getBenefits}=require('./beneficios-cgu');
-const {getEconomia,getIvcad}=require('./dados-dinamicos');
+const {getEconomia,getIvcad,getPibPerCapita}=require('./dados-dinamicos');
 const {getByMunicipio:readCagedPE,SOURCE:CAGED_PE_SOURCE}=require('../data/caged2026pe');
 function readPotential2026(code){
   try{return require('../data/mte2026').getByMunicipio(code);}
@@ -22,6 +24,7 @@ const SOURCES = {
   mds: { name: 'MDS · Cadastro Único e IVCAD', url: 'https://www.gov.br/mds/pt-br/orgaos/SAGICAD/dados-e-ferramentas-informacionais/dados-e-ferramentas-do-cadastro-unico/' },
   ivcad_pe: { name: 'MDS/Condepe-Fidem · IVCAD PE via API pública', url: 'https://www.cf.pe.gov.br/observatorio/fontes/seplag_ivcad' },
   ivcad_nacional: { name: 'MDS · IVCAD nacional (painel oficial; API não validada)',url:'https://paineis.mds.gov.br/public/extensions/observatorio-do-cadastro-unico/index.html' },
+  ibge_pib_pc: {name:'IBGE · Pesquisa PIB per capita municipal (indicador 47001)',url:'https://servicodados.ibge.gov.br/api/v1/pesquisas/indicadores/47001'},
   ibge_pib: { name:'IBGE/SIDRA · PIB municipal (5938)',url:'https://sidra.ibge.gov.br/tabela/5938' },
   ibge_cempre: {name:'IBGE/SIDRA · CEMPRE pessoal assalariado por atividade (9528)',url:'https://sidra.ibge.gov.br/tabela/9528'},
   ibge_pnad_uf: {name:'IBGE/SIDRA · PNAD Contínua desocupação por UF/idade (4094)',url:'https://sidra.ibge.gov.br/tabela/4094'},
@@ -31,7 +34,7 @@ const SOURCES = {
   ibge_esgoto: { name: 'IBGE/SIDRA · Censo 2022, esgotamento (6805)', url: 'https://sidra.ibge.gov.br/tabela/6805' },
   inep: { name: 'INEP · IDEB', url: 'https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/ideb/resultados' },
   mte: { name: 'MTE/SIT · Potencial de aprendizagem · 07/2026', url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/insercao-de-aprendiz-1/potencial_ead_julho-1.xlsx' },
-  mds_cadunico: {name:'MDS · Observatório do Cadastro Único, agregados municipais',url:'https://paineis.mds.gov.br/public/extensions/observatorio-do-cadastro-unico/index.html'},
+  mds_cadunico: {name:'MDS/SAGICAD · MI Social, agregados municipais do Cadastro Único',url:'https://aplicacoes.mds.gov.br/sagi/servicos/misocial'},
   cgu_beneficios: {name:'CGU · Portal da Transparência: PBF/BPC por município',url:'https://api.portaldatransparencia.gov.br/'},
   tesouro_dca: {name:'STN/SICONFI · DCA, funções e subfunções',url:'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos'},
   atlas_pnud: {name:'Atlas Brasil/PNUD · IDHM e indicadores históricos',url:'https://www.atlasbrasil.org.br/'},
@@ -182,7 +185,10 @@ async function getDiagnosis(code) {
     getEconomia(codigo,uf),
     getIvcad(codigo,uf),
     getBudget(codigo),
-    getBenefits(codigo)
+    getBenefits(codigo),
+    getPibPerCapita(codigo),
+    getCadunico(codigo),
+    getFiscalBalances(codigo,new Date().getUTCFullYear()-1)
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
@@ -209,6 +215,9 @@ async function getDiagnosis(code) {
   const economic=results[10].status==='fulfilled'?results[10].value:{gdp:null,sectors:null,unemployment:null};
   const budgetDetail=results[12].status==='fulfilled'?results[12].value:null;
   const benefits=results[13].status==='fulfilled'?results[13].value:{configured:false,bolsa:null,bpc:null};
+  const pibPerCapita=results[14].status==='fulfilled'?results[14].value:null;
+  const cadunico=results[15].status==='fulfilled'?results[15].value:null;
+  const balances=results[16].status==='fulfilled'?results[16].value:null;
   const caged = uf==='PE' ? readCagedPE(codigo) : null;
   const sanitation=extractSaneamento(
     results[8].status==='fulfilled'?results[8].value:null,
@@ -264,20 +273,31 @@ async function getDiagnosis(code) {
     indicator('orcamento_educacao', 'Despesas liquidadas · Educação', budget?.education ?? null, 'R$', budget?.period ?? '—', 'tesouro'),
     indicator('orcamento_saude', 'Despesas liquidadas · Saúde', budget?.health ?? null, 'R$', budget?.period ?? '—', 'tesouro')
   ];
-  // Cadastro Único: campos previstos sem estimar valores enquanto não houver
-  // API pública agregada nacional autenticada/validada. Não interpretar ausência como zero.
-  for(const [id,label,unit] of [
-    ['cadunico_familias','Famílias inscritas no CadÚnico','famílias'],
-    ['cadunico_familias_por100','Famílias inscritas / 100 residentes','famílias/100 hab.'],
-    ['cadunico_pessoas','Pessoas inscritas no CadÚnico','pessoas'],
-    ['cadunico_pessoas_pct','Pessoas inscritas / total de habitantes','%'],
-    ['cadunico_baixa_renda','Famílias em baixa renda','famílias'],
-    ['cadunico_pobreza','Famílias em pobreza','famílias'],
-    ['cadunico_extrema_pobreza','Pessoas em extrema pobreza','pessoas'],
-    ['cadunico_pop_rua','Famílias em situação de rua','famílias'],
-    ['cadunico_atualizadas','Famílias com cadastro atualizado','famílias'],
-    ['cadunico_atualizacao_pct','Atualização cadastral / famílias inscritas','%']
-  ])data.push(indicator(id,label,null,unit,'—','mds_cadunico','Fonte pública agregada ainda sem API nacional aberta testada. Não estimar famílias a partir de pessoas, nem vice-versa.'));
+  // CadÚnico: API MI Social usa código IBGE de 6 dígitos. O endpoint pode
+  // estar em manutenção: sem dados agregados auditados, valores permanecem null.
+  // Denominador: Censo 2022 (não é taxa de cobertura no mesmo período).
+  const cadPeriod=cadunico?.period||'—';
+  const ratioPeople=cadunico?.people!==null&&cadunico?.people!==undefined&&population>0?within(100*cadunico.people/population,0,100):null;
+  const ratioFamilies=cadunico?.families!==null&&cadunico?.families!==undefined&&population>0?100*cadunico.families/population:null;
+  const cadItems=[
+    ['cadunico_familias','Famílias inscritas no CadÚnico','famílias',cadunico?.families],
+    ['cadunico_familias_por100','Famílias inscritas / 100 residentes do Censo 2022','famílias/100 hab.',ratioFamilies],
+    ['cadunico_pessoas','Pessoas inscritas no CadÚnico','pessoas',cadunico?.people],
+    ['cadunico_pessoas_pct','Pessoas inscritas / residentes do Censo 2022','%',ratioPeople],
+    ['cadunico_baixa_renda','Famílias com renda per capita até 1/2 salário mínimo','famílias',cadunico?.lowerIncome],
+    ['cadunico_pobreza','Famílias na linha de pobreza (perfil PBF)','famílias',cadunico?.poverty],
+    ['cadunico_extrema_pobreza','Pessoas em extrema pobreza','pessoas',null],
+    ['cadunico_pop_rua','Famílias em situação de rua','famílias',null],
+    ['cadunico_atualizadas','Famílias com cadastro atualizado','famílias',cadunico?.updated],
+    ['cadunico_atualizacao_pct','Taxa de atualização cadastral publicada pelo MDS','%',cadunico?.updateRate]
+  ];
+  for(const [id,label,unit,value] of cadItems)
+    data.push(indicator(id,label,value??null,unit,cadPeriod,'mds_cadunico',
+     id==='cadunico_extrema_pobreza'||id==='cadunico_pop_rua'?
+     'MI Social não publica campo municipal validado para esse recorte. Não usar indicadores de beneficiários do PBF como população total.':
+     id==='cadunico_familias_por100'||id==='cadunico_pessoas_pct'?
+     'Numerador: CadÚnico '+cadPeriod+'; denominador: Censo 2022. Anos diferentes, proporção indicativa.':
+     'Agregado mensal municipal MDS/MI Social. '+(cadunico?'Competência '+cadPeriod+'.':'Na última consulta o serviço público não forneceu dados municipais válidos; valor indisponível não é zero.')));
   for(const [id,label,entry,field,unit] of [
     ['suas_bolsa_familia_beneficiarios','Bolsa Família · quantitativo publicado','bolsa','beneficiaries','beneficiários'],
     ['suas_bolsa_familia_valor','Bolsa Família · valor mensal','bolsa','amount','R$'],
@@ -297,35 +317,44 @@ async function getDiagnosis(code) {
   const lines=budgetDetail?.entries||budgetLines.map(([id,label,code,note])=>({id,label,value:null,unit:'R$',period:'—',source:'tesouro_dca',note}));
   const allBudget=[...lines,
     {id:'pib_municipal',label:'PIB municipal (contexto, não receita fiscal)',value:economic.gdp?.pib??null,unit:'R$',period:economic.gdp?.year??'—',source:'ibge_pib',note:'PIB não representa dinheiro do orçamento municipal.'},
-    {id:'pib_percapita',label:'PIB per capita municipal · valor oficial',value:null,unit:'R$',period:'—',source:'ibge_pib',note:'Aguarda fonte com PIB e população do mesmo ano. Não combinar PIB 2023 com população de outro ano.'}
+    {id:'pib_percapita',label:'PIB per capita municipal · valor oficial',value:pibPerCapita?.value??null,unit:'R$',period:pibPerCapita?.year??'—',source:'ibge_pib_pc',note:'Valor publicado na API de Pesquisas do IBGE, indicador 47001; sem combinar anos distintos.'}
   ];
   for(const row of allBudget)data.push(indicator('orcamento_v5_'+row.id,row.label,row.value??null,row.unit||'R$',row.period||String(budgetDetail?.year||'—'),row.source||'tesouro_dca',row.note));
   const fiscal=budgetDetail?.finances||null;
   for(const [id,label,v,unit,note] of [
+    ['tributos','Impostos, taxas e contribuições de melhoria · receita bruta',fiscal?.taxes,'R$','DCA I-C, rubrica 1.1; não representa toda a arrecadação própria.'],
+    ['transferencias_totais_brutas','Transferências correntes e de capital · brutas',fiscal?.transfers,'R$','DCA I-C, rubricas 1.7 e 2.4; antes de deduções, sem discriminar origem federal ou estadual.'],
     ['receita','Receita realizada líquida de deduções',fiscal?.revenue,'R$','DCA I-C; não equivale à Receita Corrente Líquida.'],
     ['despesa','Despesa liquidada municipal',fiscal?.expenditure,'R$','DCA I-D; não equivale à despesa paga.'],
     ['investimentos','Investimentos liquidados',fiscal?.investments,'R$','DCA I-D, grupo 4.4, quando identificável.'],
     ['comprometimento','Despesa liquidada / receita realizada',fiscal?.expenditureShare,'%','Relação gerencial, não índice oficial de endividamento.'],
-    ['endividamento','Dívida Consolidada Líquida',null,'R$','Exige RGF Anexo 2: não inventar a partir das despesas da DCA.']
-  ])data.push(indicator('orcamento_v5_'+id,label,v??null,unit,fiscal?.year?String(fiscal.year):'—','tesouro_dca',note));
+    ['endividamento','Dívida Consolidada Líquida',balances?.debtNet??null,'R$','RGF Anexo 02: saldo DCL pode ser negativo.']
+  ])data.push(indicator('orcamento_v5_'+id,label,v??null,unit,id==='endividamento'?(balances?.year?String(balances.year):'—'):(fiscal?.year?String(fiscal.year):'—'),id==='endividamento'?'tesouro_rgf':'tesouro_dca',note));
 
   // V6: campos tipados e auditáveis. A existência de fonte não comprova dado municipal.
   // Até validar os esquemas e recortes municipais, preservar null, nunca zero.
-  const pendingFiscal=[
-    ['arrecadacao_propria','Arrecadação própria municipal','tesouro_dca','Receitas tributárias e outras receitas próprias: requer seleção auditada das rubricas DCA I-C/MSC.'],
-    ['transferencias_uniao','Transferências recebidas da União','tesouro_dca','Requer classificação de origem na DCA/MSC, evitando dupla contagem.'],
-    ['transferencias_estados','Transferências recebidas dos estados','tesouro_dca','Requer classificação de origem na DCA/MSC.'],
-    ['dependencia_transferencias','Dependência de transferências','tesouro_dca','Percentual exige receitas próprias e transferências da mesma competência.'],
-    ['divida_consolidada','Dívida consolidada','tesouro_rgf','RGF Anexo 2; não inferir de despesa liquidada.'],
-    ['restos_pagar','Restos a pagar','tesouro_rreo','RREO/RGF; distinguir processados, não processados e pagamentos.'],
-    ['disponibilidade_caixa','Disponibilidade de caixa','tesouro_rgf','RGF Anexo 5; distinguir disponibilidade bruta e líquida.'],
-    ['emendas_706','Transferências especiais da União · fonte 706','tesouro_msc','MSC; fonte de recurso não identifica parlamentar ou beneficiário final.'],
-    ['emendas_710','Transferências especiais estaduais · fonte 710','tesouro_msc','MSC; verificar classificação vigente no exercício.'],
-    ['emendas_federais','Emendas federais identificadas','cgu_emendas','CGU/Transferegov: sem consulta municipal validada e chave necessária, não estimar.'],
-    ['parcerias_osc','Repasses identificados a OSCs','transferegov','Cobertura federal parcial; não representa todas as parcerias municipais.']
+  // Consultas da DCA e RGF/RREO, sempre com competência e origem explicitas.
+  const fiscalIndicators=[
+    ['arrecadacao_propria','Receitas não transferidas (excl. operações de crédito) · proxy',fiscal?.ownRevenue,'R$',fiscal?.year,'tesouro_dca','DCA: receita bruta exceto intra menos transferências e crédito. Inclui receitas próprias não tributárias, inclusive alienação de bens. Não representa receita livre.'],
+    ['transferencias_uniao','Transferências da União · correntes + capital (brutas)',fiscal?.unionTransfers,'R$',fiscal?.year,'tesouro_dca','DCA contas 1.7.1 + 2.4.1, sem somar subcontas.'],
+    ['transferencias_estados','Transferências dos estados · correntes + capital (brutas)',fiscal?.stateTransfers,'R$',fiscal?.year,'tesouro_dca','DCA contas 1.7.2 + 2.4.2; não incluem outras transferências.'],
+    ['dependencia_transferencias','Participação das transferências nas receitas brutas',fiscal?.transferDependency,'%',fiscal?.year,'tesouro_dca','Transferências correntes e de capital / receita bruta (exceto intra), mesma competência.'],
+    ['divida_consolidada','Dívida consolidada (DC)',balances?.debt,'R$',balances?.year,'tesouro_rgf','RGF Anexo 02, saldo do último quadrimestre ou semestre do ano.'],
+    ['restos_pagar','Restos a pagar · saldo total',balances?.restos,'R$',balances?.year,'tesouro_rreo','RREO Anexo 07: saldo final dos restos processados e não processados, incluindo intraorçamentários.'],
+    ['disponibilidade_caixa','Disponibilidade de caixa bruta (total)',balances?.cash,'R$',balances?.year,'tesouro_rgf','RGF Anexo 05: total (IV), incluindo recursos vinculados e RPPS. Não equivale a recursos livres.'],
+    ['disponibilidade_caixa_liquida','Disponibilidade de caixa líquida (antes dos restos não processados)',balances?.cashNet,'R$',balances?.year,'tesouro_rgf','RGF Anexo 05: total (IV), após obrigações do demonstrativo; inclui recursos vinculados e RPPS.'],
+    ['restos_pagar_processados','Restos a pagar processados · saldo',balances?.processed,'R$',balances?.year,'tesouro_rreo','RREO Anexo 07, conta total processados e não processados liquidados, saldo a pagar (e).'],
+    ['restos_pagar_nao_processados','Restos a pagar não processados · saldo',balances?.unprocessed,'R$',balances?.year,'tesouro_rreo','RREO Anexo 07, total não processados, saldo a pagar (k).'],
+    ['receita_corrente_liquida_rgf','Receita Corrente Líquida municipal (RCL)',balances?.rcl,'R$',balances?.year,'tesouro_rgf','RGF Anexo 02: RCL no último quadrimestre ou semestre; não equivale a recursos livres.']
   ];
-  for(const [id,label,source,note] of pendingFiscal)
-    data.push(indicator('orcamento_v5_'+id,label,null,id==='dependencia_transferencias'?'%':'R$', '—',source,note));
+  for(const [id,label,value,unit,period,source,note] of fiscalIndicators)
+    data.push(indicator('orcamento_v5_'+id,label,value??null,unit,period?String(period):'—',source,note));
+  for(const [id,label,source,note] of [
+    ['emendas_706','Transferências especiais da União · fonte 706','tesouro_msc','A fonte não identifica automaticamente parlamentar.'],
+    ['emendas_710','Transferências especiais estaduais · fonte 710','tesouro_msc','Validar classificação do exercício antes de divulgar.'],
+    ['emendas_federais','Emendas federais identificadas','cgu_emendas','Sem consulta municipal validada não estimar.'],
+    ['parcerias_osc','Repasses identificados a OSCs','transferegov','Cobertura federal parcial; não representa todas as parcerias.']
+  ])data.push(indicator('orcamento_v5_'+id,label,null,'R$','—',source,note));
   const pendingTerritorial=[
     ['clima_desastres','Desastres registrados no município','ocorrências','s2id','Requer recorte IBGE, período e validação de registros.'],
     ['clima_afetados','Pessoas afetadas por desastres','pessoas','s2id','Não inferir número de afetados a partir de ocorrências.'],

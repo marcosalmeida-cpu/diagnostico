@@ -30,3 +30,13 @@ jobs:
         run: npm run check
       - name: Verificar fontes e relatório
         run: npm test
+      - name: Inspecionar esquemas públicos (Etapa 1)
+        if: github.ref == 'refs/heads/feat/v7-etapa1-fiscal-pib'
+        continue-on-error: true
+        run: node scripts/probe-fontes-etapa1.js
+      - name: Validar APIs oficiais por três municípios
+        if: github.ref == 'refs/heads/feat/v7-etapa1-fiscal-pib'
+        run: node scripts/validar-etapa1.js
+      - name: Validar diagnóstico integrado de BH
+        if: github.ref == 'refs/heads/feat/v7-etapa1-fiscal-pib'
+        run: node scripts/validar-diagnostico-etapa1.js

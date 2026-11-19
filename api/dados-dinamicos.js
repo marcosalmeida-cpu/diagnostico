@@ -57,6 +57,26 @@ function gdpInfo(data,code){
  if(entries.length>1){const [prevYear,previous]=entries.at(-2);if(+prevYear===+year-1&&num(previous)>0)growth=(value/num(previous)-1)*100}
  return {year,pib:value*1000,growth};
 }
+// PIB per capita: consulta municipal direta ao SIDRA, sem dividir PIB por população de outro ano.
+// O PIB per capita municipal é publicado na API de Pesquisas do IBGE (indicador 47001).
+// O código de localidade dessa API tem seis dígitos; evitar combinar PIB e população de anos diferentes.
+function parsePibPerCapita(rows,code){
+ if(!validIBGE(code)||!Array.isArray(rows)||rows.length!==1||String(rows[0]?.id)!=='47001')return null;
+ const locations=rows[0]?.res;
+ if(!Array.isArray(locations)||locations.length!==1||String(locations[0]?.localidade)!==String(code).slice(0,6))return null;
+ const series=locations[0]?.res;
+ if(!series||typeof series!=='object'||Array.isArray(series))return null;
+ const valid=Object.entries(series).filter(([year,value])=>/^20[0-9]{2}$/.test(year)&&num(value)>0).sort((a,b)=>b[0].localeCompare(a[0]));
+ if(valid.length===0)return null;
+ const [year,value]=valid[0];
+ return {year,value:num(value)};
+}
+async function getPibPerCapita(code){
+ if(!validIBGE(code))return null;
+ try{
+  return parsePibPerCapita(await readJson(IBGE+'/api/v1/pesquisas/indicadores/47001/resultados/'+code.slice(0,6)),code);
+ }catch(_){return null;}
+}
 function sectorInfo(data,code){
  const entries=classified(data,code,12762),total=entries?.get('117897');
  if(!entries||!total||!Number.isSafeInteger(total.value)||total.value<=0)return null;
@@ -125,4 +145,4 @@ async function getIvcad(code,uf){
  const result=await Promise.allSettled(requests);
  return result.some(x=>x.status!=='fulfilled')?null:parseIvcadResponses(result.map(x=>x.value),code);
 }
-module.exports={getEconomia,getIvcad,parseIvcadResponses,gdpInfo,sectorInfo,unemploymentInfo,readJson};
+module.exports={getPibPerCapita,parsePibPerCapita,getEconomia,getIvcad,parseIvcadResponses,gdpInfo,sectorInfo,unemploymentInfo,readJson};
