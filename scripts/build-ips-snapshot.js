@@ -41,12 +41,12 @@ async function run(){
   if(vals.some(v=>v!==null&&(!Number.isFinite(v)||v<0||v>100)))throw Error('Pontuação IPS inválida '+code);
   seen.add(code);out[code]=vals.map(v=>Number.isFinite(v)?v:null);
  }
- if(out['3507407']?.[0]!==73.1)throw Error('Nota IPS Gavião Peixoto difere da publicação oficial 2026');
+ if(out['3516853']?.[0]!==73.1)throw Error('Nota IPS Gavião Peixoto difere da publicação oficial 2026');
  if(Object.keys(out).length<5550)throw Error('Faltam municípios: '+missing.slice(0,18).join(','));
  const ordered=Object.fromEntries(Object.entries(out).sort(([a],[b])=>a.localeCompare(b)));
  const compact={year:2026,reference:'IPS Brasil 2026',provenance:'espelho público independente — conferir com publicação oficial IPS Brasil',sourceUrl:SOURCE,officialUrl:'https://ipsbrasil.org.br/explore/data',count:Object.keys(ordered).length,fields:FIELDS,municipalities:ordered,unmatched:missing};
  fs.mkdirSync('data',{recursive:true});
  fs.writeFileSync('data/ips2026-snapshot.json',JSON.stringify(compact));
- console.log('IPS_BUILD_AUDIT',JSON.stringify({count:compact.count,missing:missing.slice(0,22),bytes:fs.statSync('data/ips2026-snapshot.json').size,gaviao:out['3507407']?.[0],bh:out['3106200']?.[0]}));
+ console.log('IPS_BUILD_AUDIT',JSON.stringify({count:compact.count,missing:missing.slice(0,22),bytes:fs.statSync('data/ips2026-snapshot.json').size,gaviao:out['3516853']?.[0],bh:out['3106200']?.[0]}));
 }
 run().catch(e=>{console.error('IPS_BUILD_FAILED',e.message);process.exitCode=1});
