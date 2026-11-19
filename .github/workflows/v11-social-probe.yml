@@ -21,3 +21,4 @@ jobs:
       - run: node scripts/probe-sisan-files.js
       - run: node scripts/probe-sisan-csv.js
       - run: node scripts/probe-ckan-social.js
+      - run: node scripts/probe-obpoprua-ufmg.js
