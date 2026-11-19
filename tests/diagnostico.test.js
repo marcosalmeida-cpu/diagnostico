@@ -100,7 +100,7 @@ test('Identidade Rede Cidadã 2025 com símbolo original e navegação somente p
  assert.match(sidebar,/class="rail-brand"/);
  assert.match(sidebar,/assets\/rede-cidada-rostinho\.svg/);
  assert.doesNotMatch(sidebar,/>RC<\/div>|REDE CIDADÃ/);
- assert.equal((sidebar.match(/class="rail-icon"/g)||[]).length,8);
+ assert.equal((sidebar.match(/class="rail-icon"/g)||[]).length,7);
  for(const color of ['#0322D6','#65C8F3','#FF001F','#FFC000'])assert.ok(css.includes(color));
  for(const color of ['#0322D6','#00EBFF','#FF001F','#FFC000'])assert.ok(svg.includes(color));
  assert.match(html,/<nav class="mobile-tabs" aria-label="Navegação móvel">/);
