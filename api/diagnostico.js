@@ -325,7 +325,21 @@ async function getDiagnosis(code) {
     ['parcerias_osc','Repasses identificados a OSCs','transferegov','Cobertura federal parcial; não representa todas as parcerias municipais.']
   ];
   for(const [id,label,source,note] of pendingFiscal)
-    data.push(indicator('orcamento_v5_'+id,label,null,id==='dependencia_transferencias'?'%':'R taxas PNAD são CONTEXTO da UF.
+    data.push(indicator('orcamento_v5_'+id,label,null,id==='dependencia_transferencias'?'%':'R$', '—',source,note));
+  const pendingTerritorial=[
+    ['clima_desastres','Desastres registrados no município','ocorrências','s2id','Requer recorte IBGE, período e validação de registros.'],
+    ['clima_afetados','Pessoas afetadas por desastres','pessoas','s2id','Não inferir número de afetados a partir de ocorrências.'],
+    ['clima_alertas','Alertas hidrológicos e geológicos','alertas','cemaden','A cobertura de monitoramento não abrange necessariamente todos os municípios.'],
+    ['clima_areas_risco','Áreas mapeadas de risco','áreas','sgb','Mapeamento geológico não equivale à população exposta.'],
+    ['pop_rua_atendimento','Atendimentos à população em situação de rua','atendimentos','suas','RMA/Censo SUAS requer competência e abrangência municipal.'],
+    ['mse_meio_aberto','Adolescentes em MSE em meio aberto','pessoas','sinase_mdhc','Sem integração municipal validada; não usar total estadual.'],
+    ['lgbt_servicos','Serviços públicos especializados LGBTQIA+','serviços','mdhc','Existência de serviços não estima população LGBTQIA+.'],
+    ['lgbt_denuncias','Denúncias de violações LGBTQIA+','registros','mdhc','Registros não equivalem à prevalência de violência nem à população.']
+  ];
+  for(const [id,label,unit,source,note] of pendingTerritorial)
+    data.push(indicator(id,label,null,unit,'—',source,note));
+
+  // PIB e pessoal assalariado são dados municipais; taxas PNAD são contexto da UF.
   const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
   data.push(
     indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
