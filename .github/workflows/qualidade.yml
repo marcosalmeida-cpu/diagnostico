@@ -71,3 +71,9 @@ jobs:
         if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
         continue-on-error: true
         run: node scripts/probe-diretorios.js
+      - name: Descobrir endpoints OSC e fluxo público CadSUAS
+        if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
+        continue-on-error: true
+        run: |
+          node scripts/probe-mapaosc-rotas.js
+          node scripts/probe-cadsuas-post.js
