@@ -1,10 +1,5 @@
 name: Extrair Censo Escolar 2025 municipal
 on:
-  push:
-    branches: [feat/v9-etapa3-educacao-juventude]
-    paths:
-      - scripts/build-inep2025.py
-      - .github/workflows/etapa3-inep2025-snapshot.yml
   workflow_dispatch:
 permissions:
   contents: write
