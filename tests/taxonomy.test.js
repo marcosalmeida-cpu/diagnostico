@@ -11,7 +11,7 @@ const html=fs.readFileSync(path.join(base,'index.html'),'utf8');
 const js=fs.readFileSync(path.join(base,'app.js'),'utf8');
 const css=fs.readFileSync(path.join(base,'styles.css'),'utf8');
 const api=fs.readFileSync(path.join(base,'api','diagnostico.js'),'utf8');
-const liveIds=[...api.matchAll(/indicator\('([^']+)'/g)].map(x=>x[1]).filter(id=>!['economia_setor_emprego_','orcamento_v5_','educacao_frequencia_','educacao_nao_frequencia_'].includes(id));
+const liveIds=[...api.matchAll(/indicator\('([^']+)'/g)].map(x=>x[1]).filter(id=>!['economia_setor_emprego_','orcamento_v5_','educacao_frequencia_','educacao_nao_frequencia_','educacao_inep_2025_','educacao_inep_variacao_'].includes(id));
 
 test('6 grupos temáticos e 6 públicos, únicos e corretamente rotulados',()=>{
  assert.equal(themes.length,6);
