@@ -9,6 +9,7 @@ const {getFiscalPulse}=require('../lib/atividade-fiscal');
 const {getIps2026}=require('../lib/ips-brasil');
 const {getFederalProposals}=require('../lib/propostas-transferegov');
 const {getCadunico}=require('../lib/cadunico-mds');
+const {getMdsBenefits}=require('../lib/beneficios-mds');
 const {getEducationFrequency}=require('../lib/educacao-ibge');
 const {getSchoolCensus,percentVariation}=require('../lib/censo-escolar-ibge');
 const {buildAudit}=require('../lib/auditoria');
@@ -25,6 +26,11 @@ function readIdeb2025(code){
 }
 
 const SOURCES = {
+  mds_beneficios_misocial: {name:'MDS/MI Social · Bolsa Família e BPC por município (agregado mensal)',url:'https://www.gov.br/mds/pt-br/orgaos/SAGICAD/dados-e-ferramentas-informacionais/dados-e-ferramentas-do-cadastro-unico/'},
+  cecad_public: {name:'MDS · CECAD 2.0, CadÚnico e população em situação de rua',url:'https://cecad.cidadania.gov.br/tab_cad.php'},
+  rma_meio_aberto: {name:'MDS · Registro Mensal de Atendimentos dos CREAS, LA e PSC',url:'https://aplicacoes.mds.gov.br/snas/inteligencia-suas/RMA/Paineis'},
+  ibge_pns_lgbt: {name:'IBGE · PNS 2019, orientação sexual autodeclarada (sem total municipal)',url:'https://agenciadenoticias.ibge.gov.br/agencia-noticias/2012-agencia-de-noticias/noticias/33785-em-pesquisa-inedita-do-ibge-2-9-milhoes-de-adultos-se-declararam-homossexuais-ou-bissexuais-em-2019'},
+  ibge_censo_rua: {name:'IBGE · Censo Nacional da População em Situação de Rua (projeto, não resultado)',url:'https://www.ibge.gov.br/censo-nacional-pop-rua'},
   ibge_frequencia_2022:{name:'IBGE · Censo Demográfico 2022, frequência escolar (SIDRA 10056)',url:'https://sidra.ibge.gov.br/tabela/10056'},
   inep_censo_2025:{name:'INEP · Censo Escolar 2025, microdados e sinopses',url:'https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/sinopses-estatisticas/educacao-basica'},
   transferegov_discricionarias: {name:'Transferegov · propostas discricionárias e legais (Atos Preparatórios)',url:'https://api-publica.transferegov.gestao.gov.br/discricionarias/docs'},
@@ -204,7 +210,8 @@ async function getDiagnosis(code) {
     getFiscalPulse(codigo),
     getFederalProposals(codigo),
     getEducationFrequency(codigo),
-    getSchoolCensus(codigo)
+    getSchoolCensus(codigo),
+    getMdsBenefits(codigo)
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
@@ -239,6 +246,7 @@ async function getDiagnosis(code) {
   const federalProposals=results[18].status==='fulfilled'?results[18].value:null;
   const schoolFrequency=results[19].status==='fulfilled'?results[19].value:null;
   const schoolCensus=results[20].status==='fulfilled'?results[20].value:null;
+  const mdsBenefits=results[21].status==='fulfilled'?results[21].value:null;
   const caged = uf==='PE' ? readCagedPE(codigo) : null;
   const sanitation=extractSaneamento(
     results[8].status==='fulfilled'?results[8].value:null,
@@ -307,18 +315,32 @@ async function getDiagnosis(code) {
     ['cadunico_pessoas_pct','Pessoas inscritas / residentes do Censo 2022','%',ratioPeople],
     ['cadunico_baixa_renda','Famílias com renda per capita até 1/2 salário mínimo','famílias',cadunico?.lowerIncome],
     ['cadunico_pobreza','Famílias na linha de pobreza (perfil PBF)','famílias',cadunico?.poverty],
-    ['cadunico_extrema_pobreza','Pessoas em extrema pobreza','pessoas',null],
+    ['cadunico_extrema_pobreza','Famílias em extrema pobreza · recorte CadÚnico','famílias',null],
     ['cadunico_pop_rua','Famílias em situação de rua','famílias',null],
     ['cadunico_atualizadas','Famílias com cadastro atualizado','famílias',cadunico?.updated],
     ['cadunico_atualizacao_pct','Taxa de atualização cadastral publicada pelo MDS','%',cadunico?.updateRate]
   ];
   for(const [id,label,unit,value] of cadItems)
-    data.push(indicator(id,label,value??null,unit,cadPeriod,'mds_cadunico',
+    data.push(indicator(id,label,value??null,unit,id==='cadunico_extrema_pobreza'||id==='cadunico_pop_rua'?'—':cadPeriod,
+     id==='cadunico_extrema_pobreza'||id==='cadunico_pop_rua'?'cecad_public':'mds_cadunico',
      id==='cadunico_extrema_pobreza'||id==='cadunico_pop_rua'?
-     'MI Social não publica campo municipal validado para esse recorte. Não usar indicadores de beneficiários do PBF como população total.':
+     'A consulta nacional pública CECAD permite tabular o recorte municipal, mas não foi validado endpoint automático que retorne valores estruturados. Não confundir famílias cadastradas com a população total em extrema pobreza ou rua; a ausência do valor não é zero.':
      id==='cadunico_familias_por100'||id==='cadunico_pessoas_pct'?
      'Numerador: CadÚnico '+cadPeriod+'; denominador: Censo 2022. Anos diferentes, proporção indicativa.':
      'Agregado mensal municipal MDS/MI Social. '+(cadunico?'Competência '+cadPeriod+'.':'Na última consulta o serviço público não forneceu dados municipais válidos; valor indisponível não é zero.')));
+  const pbfMds=mdsBenefits?.bolsa??null,bpcMds=mdsBenefits?.bpc??null;
+  data.push(indicator('suas_pbf_familias_mds','Bolsa Família · famílias beneficiárias (MDS)',
+   pbfMds?.beneficiaries??null,'famílias',pbfMds?.period??'—','mds_beneficios_misocial',
+   'Agregado mensal de famílias beneficiárias do Bolsa Família. Fonte MDS/MI Social, município de cadastro. Consulta retorna indisponível quando o serviço estiver em manutenção.'));
+  data.push(indicator('suas_bpc_mds_pagador','BPC · benefícios por município pagador (MDS)',
+   bpcMds?.beneficiaries??null,'benefícios',bpcMds?.period??'—','mds_beneficios_misocial',
+   'BPC por município PAGADOR, não equivale necessariamente aos residentes do município. Não somar cumulativamente os meses; dados ausentes não são zero.'));
+  data.push(indicator('suas_bpc_mds_pcd','BPC · benefícios para pessoas com deficiência (município pagador)',
+   bpcMds?.disability??null,'benefícios',bpcMds?.period??'—','mds_beneficios_misocial',
+   'Parcela de BPC para pessoas com deficiência por município pagador. Não é total de pessoas com deficiência no município.'));
+  data.push(indicator('suas_bpc_mds_idoso','BPC · benefícios para pessoas idosas (município pagador)',
+   bpcMds?.older??null,'benefícios',bpcMds?.period??'—','mds_beneficios_misocial',
+   'Parcela de BPC para idosos por município pagador. Não é total da população idosa.'));
   for(const [id,label,entry,field,unit] of [
     ['suas_bolsa_familia_beneficiarios','Bolsa Família · quantitativo publicado','bolsa','beneficiaries','beneficiários'],
     ['suas_bolsa_familia_valor','Bolsa Família · valor mensal','bolsa','amount','R$'],
@@ -334,7 +356,7 @@ async function getDiagnosis(code) {
     ['atlas_gini','Desigualdade · índice Gini histórico']
   ];
   for(const [id,label] of historic)data.push(indicator(id,label,null,'índice (0–1)','2010','atlas_pnud','Atlas Brasil/PNUD: dados censitários 2010. A API municipal automática ainda não foi validada.'));
-  data.push(indicator('mse_sinase_municipio','Adolescentes em MSE no município',null,'pessoas','—','sinase_mdhc','SINASE tem levantamentos nacionais/estaduais, sem API municipal regular validada nesta integração.'));
+  data.push(indicator('mse_sinase_municipio','Adolescentes em MSE · LA e PSC no município',null,'adolescentes','—','rma_meio_aberto','RMA/CREAS possui registros municipais de Liberdade Assistida e Prestação de Serviços à Comunidade; a extração automatizada municipal ainda não foi homologada. Levantamentos SINASE do meio fechado são predominantemente estaduais, não usar como município.'));
   const lines=budgetDetail?.entries||budgetLines.map(([id,label,code,note])=>({id,label,value:null,unit:'R$',period:'—',source:'tesouro_dca',note}));
   const allBudget=[...lines,
     {id:'pib_municipal',label:'PIB municipal (contexto, não receita fiscal)',value:economic.gdp?.pib??null,unit:'R$',period:economic.gdp?.year??'—',source:'ibge_pib',note:'PIB não representa dinheiro do orçamento municipal.'},
@@ -538,8 +560,10 @@ async function getDiagnosis(code) {
     {id:'beneficios',name:'PBF/BPC · CGU por município',status:Number.isFinite(benefits.bolsa)&&Number.isFinite(benefits.bpc)?'verificado':Number.isFinite(benefits.bolsa)||Number.isFinite(benefits.bpc)?'parcial':'indisponivel',source:'cgu_beneficios',reason:benefits.configured?'Acesso autenticado, sem agregados atuais validados em uma ou mais séries.':'Necessita CGU_API_KEY configurada como segredo de servidor; sem chave, dados ficam indisponíveis.'},
     {id:'orcamento_v5',name:'Orçamento por subfunção · SICONFI/DCA',status:budgetDetail?'verificado':'indisponivel',source:'tesouro_dca',reason:budgetDetail?'Dados anuais por função e subfunção. Fundos FIA, Idoso e FMAS não são individualizados pela DCA; proxies devidamente identificadas.':'Sem DCA validada nesta consulta.'},
     {id:'atlas',name:'Atlas/PNUD · IDHM municipal histórico',status:'nao_integrado',source:'atlas_pnud',reason:'Os dados históricos 2010 são públicos, porém a API municipal oficial não foi validada nesta fase.'},
-    {id:'mse',name:'SINASE · medidas socioeducativas',status:'nao_integrado',source:'sinase_mdhc',reason:'Sem API pública municipal de MSE em meio aberto validada; dados estaduais não devem ser apresentados como municipais.'},
+    {id:'mse',name:'Medidas socioeducativas municipais · RMA/CREAS (LA/PSC)',status:'nao_integrado',source:'rma_meio_aberto',reason:'Os registros municipais de LA e PSC do SUAS são a fonte correta para o meio aberto, mas o acesso automático agregado não foi validado. O SINASE 2025 do meio fechado agrega sobretudo por UF, não por município.'},
         {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'lgbt_municipal',name:'População LGBTQIA+ por município · censo nacional',status:'nao_integrado',source:'ibge_pns_lgbt',reason:'O Censo Demográfico 2022 não coletou orientação sexual nem identidade de gênero; PNS 2019 é pesquisa amostral e não fornece total confiável para todos os municípios. Não aplicar percentuais nacionais ao território.'},
+    {id:'rua_censo',name:'Contagem nacional da população em situação de rua',status:'nao_integrado',source:'ibge_censo_rua',reason:'O IBGE prepara o Censo Nacional da População em Situação de Rua; ainda não foi validada divulgação de contagens censitárias municipais. O CadÚnico abrange somente cadastrados e pode subcontar.'},
     {id:'emendas_execucao',name:'Execução financeira e repasses efetivos de emendas',status:'nao_integrado',source:'transferegov',reason:'As contagens atuais do Transferegov são propostas de proponentes cadastrados no município. Empenhos, pagamentos, execução territorial e valores líquidos por emenda ainda exigem conciliação dos instrumentos; propostas não equivalem a recursos liberados.'},
     {id:'educacao_modalidades_2025',name:'EJA, educação profissional e especial · INEP 2025',status:'nao_integrado',source:'inep_censo_2025',reason:'Os microdados oficiais 2025 não puderam ser obtidos com integridade auditada. Sem extração validada não apresentar matrículas dessas modalidades para o município.'},
     {id:'pop_rua_municipal',name:'População em situação de rua · recorte municipal',status:'nao_integrado',source:'mds',reason:'O cadastro municipal de pessoas e famílias em situação de rua não teve fonte automatizada nacional validada para esta versão. Não inferir total a partir da contagem de equipamentos.'},
