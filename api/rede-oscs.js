@@ -65,5 +65,7 @@ module.exports=async function handler(req,res){
   return res.status(200).json(value);
  }catch(_){return res.status(502).json({error:'Mapa das OSCs temporariamente indisponível. Consulte a fonte oficial.'})}
 };
+module.exports.listOSCs=listOSCs;
+module.exports.getContact=getContact;
 module.exports.parseList=parseList;
 module.exports.parseContact=parseContact;
