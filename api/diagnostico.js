@@ -600,7 +600,7 @@ async function getDiagnosis(code) {
     {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
   ];
   const valid = data.filter(d => d.status === 'verificado').length;
-  const diagnostic = { version: '11.0-protecao-social-nacional', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+  const diagnostic = { version: '13.0-publicos-estudo-financiamento', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
     sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
       disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
     notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
