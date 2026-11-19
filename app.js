@@ -189,7 +189,7 @@ qs('#loadBtn').onclick=async()=>{
   const d=await r.json();if(!r.ok)throw new Error(d.error||'Não foi possível validar as fontes.');
   if(d.municipio.codigoIBGE!==state.selected.codigoIBGE)throw new Error('O município retornado não corresponde à seleção.');
   state.data=d;state.analysis=null;render(d);enableReady(true);
-  document.dispatchEvent(new CustomEvent("diagnostico:municipio",{detail:{ibge:d.municipio.codigoIBGE}}));
+  document.dispatchEvent(new CustomEvent("diagnostico:municipio",{detail:{ibge:d.municipio.codigoIBGE,audit:d.audit}}));
   status('Consulta concluída. '+d.quality.verified+' de '+d.quality.total+' indicadores demonstrativos verificados. Consulte as lacunas antes de decidir.');
   document.getElementById('indicadores').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
  }catch(err){status(err.message,true)}
