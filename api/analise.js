@@ -32,6 +32,20 @@ function factualAnalysis(d){
   t+='A combinação entre presença juvenil, escolaridade e perfil setorial sustenta a hipótese de projetos de formação integrada, desenvolvimento socioemocional e articulação com empresas, condicionada à identificação de demanda efetiva e da rede educacional local.';
   paragraphs.push(t);
  }
+ const schoolTotal=value('educacao_inep_2025_fundamental'),highSchool=value('educacao_inep_2025_medio'),
+   preschool=value('educacao_inep_2025_pre_escola'),daycare=value('educacao_inep_2025_creche'),
+   nonAttendance15=value('educacao_nao_frequencia_15a17'),
+   nonAttendance18=value('educacao_nao_frequencia_18a24'),highVariation=value('educacao_inep_variacao_medio');
+ if([schoolTotal,highSchool,preschool,daycare,nonAttendance15,nonAttendance18].some(x=>x!==null)){
+  let t='INFÂNCIA, JUVENTUDE E ACESSO À EDUCAÇÃO — ';
+  if(daycare!==null||preschool!==null)t+='O Censo Escolar 2025 registra, nas unidades localizadas no município, '+(daycare!==null?fmtN(daycare)+' matrículas em creches':'matrículas em creches não verificadas')+' e '+(preschool!==null?fmtN(preschool)+' em pré-escolas':'matrículas em pré-escolas não verificadas')+'. ';
+  if(schoolTotal!==null||highSchool!==null)t+='O ensino fundamental reúne '+fmtN(schoolTotal)+' matrículas e o ensino médio '+fmtN(highSchool)+' matrículas em escolas do território (INEP/IBGE, 2025). ';
+  if(highVariation!==null)t+='O estoque de matrículas do ensino médio variou '+fmtN(highVariation)+'% entre 2024 e 2025, o que NÃO mede evasão ou conclusão escolar de residentes. ';
+  if(nonAttendance15!==null)t+='No Censo 2022, '+fmtN(nonAttendance15)+'% da população residente de 15 a 17 anos não frequentava escola/creche. ';
+  if(nonAttendance18!==null)t+='Na faixa de 18 a 24 anos, a não frequência escolar era '+fmtN(nonAttendance18)+'%, dado que não deve ser confundido com pessoas sem ensino médio completo. ';
+  t+='Matrículas e frequência possuem universos e anos diferentes: não subtrair uma da outra para estimar déficit de vagas, evasão ou demanda por um projeto. Para propostas da Rede Cidadã, investigar EJA, formação profissional, escolas de origem, turnos, rotas de acesso e interlocução com a rede territorial.';
+  paragraphs.push(t);
+ }
  let social='PROTEÇÃO SOCIAL E DESIGUALDADES — ';
  if(cras!==null)social+='O Censo SUAS 2024 identificou '+fmtN(cras)+' CRAS, número que não mede suficiência de cobertura nem famílias acompanhadas. ';
  if(value('ivcad_geral')!==null)social+='O IVCAD obtido por API pública para o recorte elegível em Pernambuco apresenta índice geral '+fmtI(value('ivcad_geral'))+' (0 a 1); '+(dims.length?'as maiores dimensões relativas são '+dims.slice(0,2).map(x=>x.name+' ('+fmtI(x.v)+')').join(' e ')+'. ':'')+'O índice não é percentual de famílias vulneráveis nem cadastro universal. ';

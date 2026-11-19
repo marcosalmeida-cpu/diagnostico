@@ -1,0 +1,30 @@
+name: Auditoria fontes etapa 3
+on:
+  push:
+    branches: [feat/v9-etapa3-educacao-juventude]
+    paths:
+      - scripts/probe-etapa3-fontes.js
+      - .github/workflows/etapa3-auditoria.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe APIs
+        run: node scripts/probe-etapa3-fontes.js
+      - name: Examinar ZIP 2025 INEP e colunas reais
+        shell: bash
+        run: |
+          curl -fL --retry 2 --max-time 120 'https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2025_.zip' -o /tmp/inep-2025.zip
+          unzip -Z1 /tmp/inep-2025.zip | grep -Ei 'csv|dicion' | head -25
+          for PAT in 'Tabela_Escola_2025_V2.csv' 'Tabela_Matricula_2025_V2.csv'; do
+            NAME="$(unzip -Z1 /tmp/inep-2025.zip | grep -F "$PAT" | head -1)"
+            if [[ -n "$NAME" ]]; then echo "EDU3_HEADER $PAT"; unzip -p /tmp/inep-2025.zip "$NAME" | head -c 16000 | head -n 1 || true; fi
+          done

@@ -1,0 +1,32 @@
+name: Extrair Censo Escolar 2025 municipal
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Baixar arquivo INEP e auditar integridade SHA256 independentemente
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fkL --retry 2 --connect-timeout 30 --max-time 400 'https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2025_.zip' -o /tmp/microdados_2025.zip
+          echo "ad2c389160be5cf6b8e32257677e9b5657f01d10a342355ad9757bfecd2fc90a  /tmp/microdados_2025.zip" | sha256sum -c -
+          unzip -tq /tmp/microdados_2025.zip | tail -2
+      - name: Consolidar somente indicadores escolares municipais
+        run: python scripts/build-inep2025.py /tmp/microdados_2025.zip
+      - name: Versionar dados municipais validados
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add data/inep2025-municipal.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data(etapa3): agregar EJA, profissional e especial INEP 2025 por municipio"
+            git push origin HEAD:feat/v9-etapa3-educacao-juventude
+          fi
