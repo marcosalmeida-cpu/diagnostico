@@ -60,7 +60,7 @@ function gdpInfo(data,code){
 // PIB per capita: consulta municipal direta ao SIDRA, sem dividir PIB por população de outro ano.
 function parsePibPerCapita(rows,code){
  if(!Array.isArray(rows)||rows.length<2||!rows[0]||typeof rows[0]!=='object')return null;
- const candidates=rows.slice(1).filter(r=>String(r.D1C)===String(code)&&String(r.D2C)==='38'&&/^20\\d{2}$/.test(String(r.D3C))&&num(r.V)>0);
+ const candidates=rows.slice(1).filter(r=>String(r.D1C)===String(code)&&String(r.D2C)==='38'&&/^20[0-9]{2}$/.test(String(r.D3C))&&num(r.V)>0);
  if(!candidates.length)return null;
  candidates.sort((a,b)=>Number(b.D3C)-Number(a.D3C));
  const item=candidates[0];
