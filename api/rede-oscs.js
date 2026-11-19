@@ -20,12 +20,13 @@ function parseList(payload,code,page){
   if(!Number.isSafeInteger(id)||id<1||!name||ids.has(id))return null;
   ids.add(id);
   if(row.cd_municipio&&String(row.cd_municipio)!==String(code))return null;
-  items.push({id,name,cnpj:String(row.cd_identificador_osc||'').replace(/\D/g,'').padStart(14,'0').slice(-14)||null,
+  const cnpj=String(row.cd_identificador_osc??'').replace(/\D/g,'');
+  items.push({id,name,cnpj:cnpj.length>=11&&cnpj.length<=14?cnpj.padStart(14,'0'):null,
     category:str(row.tx_natureza_juridica_osc,110),activity:str(row.tx_nome_atividade_economica,170),
     address:str(row.tx_endereco_osc,300),
     url:'https://mapaosc.ipea.gov.br/detalhar/'+id});
  }
- return {items,total:payload.total,page,hasMore:page*items.length<payload.total && items.length>0,
+ return {items,total:payload.total,page,hasMore:items.length>=8 && page*10<payload.total,
   source:'Mapa das OSCs / Ipea',sourceUrl:'https://mapaosc.ipea.gov.br/base-dados',
   note:'Organizações cadastradas no município; não representa presença efetiva de projetos nem OSCs com parceria ativa.'};
 }
