@@ -1,0 +1,24 @@
+name: Fontes de proteção social nacional
+on:
+  push:
+    branches: [feat/v11-protecao-social-nacional]
+    paths:
+      - scripts/probe-social-nacional.js
+      - .github/workflows/v11-social-probe.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/probe-social-nacional.js
+      - run: node scripts/probe-sisan-files.js
+      - run: node scripts/probe-sisan-csv.js
+      - run: node scripts/probe-ckan-social.js
+      - run: node scripts/probe-obpoprua-ufmg.js

@@ -18,6 +18,10 @@ async function run(){
  assert(d.audit?.indicators?.length===d.indicators.length,'Auditoria municipal não acompanha o diagnóstico');
  assert(d.audit.municipality.codigoIBGE==='3106200','Código IBGE divergente na auditoria');
  assert(d.audit.verified+d.audit.unavailable===d.audit.total,'Contagem da auditoria inconsistente');
+ const rua=d.indicators.find(x=>x.id==='pop_rua_cadunico_2021');
+ assert.equal(rua?.value,9147,'Série UFMG municipal não chegou ao relatório');
+ assert.equal(rua?.period,'2021');
+ assert.equal(rua?.status,'verificado');
  assert(d.audit.indicators.every(x=>x.status!=='verificado'||Number.isFinite(x.value)),'Valor indisponível indevidamente verificado');
  assert(d.audit.indicators.every(x=>x.consultedAt===d.generatedAt&&x.sourceUpdatedAt===null),'Tempo de consulta foi confundido com atualização da fonte');
  assert(!d.audit.warnings.some(w=>w.severity==='erro'),'Fonte ausente ou estado inconsistente: '+JSON.stringify(d.audit.warnings.filter(w=>w.severity==='erro').slice(0,5)));

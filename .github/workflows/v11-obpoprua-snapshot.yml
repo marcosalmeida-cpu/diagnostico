@@ -1,0 +1,34 @@
+name: Consolidar Pop Rua UFMG nacional 2012–2021
+on:
+  push:
+    branches: [feat/v11-protecao-social-nacional]
+    paths:
+      - scripts/build-poprua-ufmg.py
+      - .github/workflows/v11-obpoprua-snapshot.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Baixar duas planilhas nacionais do Observatório Pop Rua UFMG
+        run: |
+          curl -fL --retry 3 --max-time 100 'https://obpoprua.direito.ufmg.br/tabelas/municipios_serie_historica_pop_rua.xlsx' -o /tmp/poprua-serie.xlsx
+          curl -fL --retry 3 --max-time 100 'https://obpoprua.direito.ufmg.br/tabelas/municipios_pop_rua_2021.xlsx' -o /tmp/poprua-2021.xlsx
+      - name: Conciliar séries municipais e publicar apenas agregados
+        run: python scripts/build-poprua-ufmg.py /tmp/poprua-serie.xlsx /tmp/poprua-2021.xlsx
+      - name: Persistir snapshot auditado sem informações individuais
+        run: |
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'
+          git add data/poprua-ufmg-2012-2021.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'data(v11): histórico municipal de população de rua cadastrada 2012-2021 UFMG'
+            git push origin HEAD:feat/v11-protecao-social-nacional
+          fi
