@@ -27,7 +27,7 @@ test('todos os indicadores estáticos ou gerados dinamicamente estão mapeados s
  assert.ok(liveIds.length>=66);
  const dynamicIds=Array.from({length:6},(_,i)=>'economia_setor_emprego_'+(i+1));
  const dynamicSuas=['cadunico_familias','cadunico_familias_por100','cadunico_pessoas','cadunico_pessoas_pct','cadunico_baixa_renda','cadunico_pobreza','cadunico_extrema_pobreza','cadunico_pop_rua','cadunico_atualizadas','cadunico_atualizacao_pct','suas_bolsa_familia_beneficiarios','suas_bolsa_familia_valor','suas_bpc_beneficiarios','suas_bpc_valor','atlas_idhm','atlas_idhm_longevidade','atlas_idhm_educacao','atlas_idhm_renda','atlas_gini'];
- const generatedPulse=[...api.matchAll(/\\['(economia_pulso_[^']+)'/g)].map(x=>x[1]);
+ const generatedPulse=[...api.matchAll(/'economia_pulso_[a-z_]+',/g)].map(x=>x[0].slice(1,-2));
  const generatedV6=['clima_desastres','clima_afetados','clima_alertas','clima_areas_risco','pop_rua_atendimento','mse_meio_aberto','lgbt_servicos','lgbt_denuncias'];
  const known=new Set([...liveIds,...dynamicIds,...dynamicSuas,...generatedV6,...generatedPulse,...budgets.flatMap(x=>x.ids)]);
  const reachable=new Set([...themes,...audiences,...budgets].flatMap(x=>[...x.ids,...(x.contextIds||[])]));
