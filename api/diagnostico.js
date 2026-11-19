@@ -297,7 +297,7 @@ async function getDiagnosis(code) {
      'MI Social não publica campo municipal validado para esse recorte. Não usar indicadores de beneficiários do PBF como população total.':
      id==='cadunico_familias_por100'||id==='cadunico_pessoas_pct'?
      'Numerador: CadÚnico '+cadPeriod+'; denominador: Censo 2022. Anos diferentes, proporção indicativa.':
-     'Agregado mensal municipal MDS/MI Social, sujeito a disponibilidade do serviço. Ausência não significa zero.'));
+     'Agregado mensal municipal MDS/MI Social. '+(cadunico?'Competência '+cadPeriod+'.':'Na última consulta o serviço público não forneceu dados municipais válidos; valor indisponível não é zero.')));
   for(const [id,label,entry,field,unit] of [
     ['suas_bolsa_familia_beneficiarios','Bolsa Família · quantitativo publicado','bolsa','beneficiaries','beneficiários'],
     ['suas_bolsa_familia_valor','Bolsa Família · valor mensal','bolsa','amount','R$'],
