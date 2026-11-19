@@ -55,3 +55,7 @@ jobs:
       - name: Gerar relatório real e verificar o mapa na página 2
         if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
         run: node scripts/validar-etapa2.js
+      - name: Inspecionar filtros Transferegov e dados IPS 2026
+        if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
+        continue-on-error: true
+        run: node scripts/probe-transferegov-ips-schema.js
