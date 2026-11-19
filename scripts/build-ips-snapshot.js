@@ -31,10 +31,15 @@ async function run(){
   if(byName.has(key))throw Error('Chave municipal IBGE duplicada: '+key);
   byName.set(key,String(x.id));
  }
+ // Divergências ortográficas verificadas contra a tabela oficial de municípios IBGE.
+ const aliases={'SE/grachocardoso':'2802601','RN/ares':'2401206','RN/acu':'2400208',
+ 'MG/baraodemontealto':'3105509','RR/saoluiz':'1400605'};
+ const ibgeIds=new Set(municipalities.map(x=>String(x.id)));
+ for(const [key,code] of Object.entries(aliases))if(!ibgeIds.has(code))throw Error('Alias não existe no IBGE: '+key);
  const out={};
  const missing=[],seen=new Set();
  for(const r of source.municipios){
-  const key=r.u+'/'+norm(r.m),code=byName.get(key);
+  const key=r.u+'/'+norm(r.m),code=byName.get(key)||aliases[key];
   if(!code){missing.push(key);continue;}
   if(seen.has(code))throw Error('Código IBGE duplicado no IPS: '+code);
   const vals=FIELDS.map(k=>r.i?.[k]);
@@ -42,7 +47,7 @@ async function run(){
   seen.add(code);out[code]=vals.map(v=>Number.isFinite(v)?v:null);
  }
  if(out['3516853']?.[0]!==73.1)throw Error('Nota IPS Gavião Peixoto difere da publicação oficial 2026');
- if(Object.keys(out).length<5550)throw Error('Faltam municípios: '+missing.slice(0,18).join(','));
+ if(Object.keys(out).length!==5570)throw Error('Faltam municípios: '+missing.slice(0,18).join(','));
  const ordered=Object.fromEntries(Object.entries(out).sort(([a],[b])=>a.localeCompare(b)));
  const compact={year:2026,reference:'IPS Brasil 2026',provenance:'espelho público independente — conferir com publicação oficial IPS Brasil',sourceUrl:SOURCE,officialUrl:'https://ipsbrasil.org.br/explore/data',count:Object.keys(ordered).length,fields:FIELDS,municipalities:ordered,unmatched:missing};
  fs.mkdirSync('data',{recursive:true});
