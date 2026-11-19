@@ -37,3 +37,6 @@ jobs:
       - name: Validar APIs oficiais por três municípios
         if: github.ref == 'refs/heads/feat/v7-etapa1-fiscal-pib'
         run: node scripts/validar-etapa1.js
+      - name: Validar diagnóstico integrado de BH
+        if: github.ref == 'refs/heads/feat/v7-etapa1-fiscal-pib'
+        run: node scripts/validar-diagnostico-etapa1.js
