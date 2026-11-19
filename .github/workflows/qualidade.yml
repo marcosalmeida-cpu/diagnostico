@@ -34,3 +34,6 @@ jobs:
         if: github.ref == 'refs/heads/feat/v7-etapa1-fiscal-pib'
         continue-on-error: true
         run: node scripts/probe-fontes-etapa1.js
+      - name: Validar APIs oficiais por três municípios
+        if: github.ref == 'refs/heads/feat/v7-etapa1-fiscal-pib'
+        run: node scripts/validar-etapa1.js
