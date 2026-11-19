@@ -41,6 +41,7 @@
   <nav class="side-nav" aria-label="Seções do diagnóstico">
    <a class="active" href="#visao" title="Visão territorial" aria-label="Visão territorial"><svg class="rail-icon" aria-hidden="true"><use href="#ic-overview"/></svg></a>
    <a href="#indicadores" title="Indicadores públicos" aria-label="Indicadores públicos"><svg class="rail-icon" aria-hidden="true"><use href="#ic-data"/></svg></a>
+   <a href="#rede" title="Rede SUAS e Parcerias" aria-label="Rede SUAS e Parcerias"><svg class="rail-icon" aria-hidden="true"><use href="#ic-hand"/></svg></a>
    <a href="#analise" title="Leitura social" aria-label="Leitura social"><svg class="rail-icon" aria-hidden="true"><use href="#ic-analysis"/></svg></a>
    <a href="#fontes" title="Fontes e auditoria" aria-label="Fontes e auditoria"><svg class="rail-icon" aria-hidden="true"><use href="#ic-sources"/></svg></a>
   </nav>
@@ -106,6 +107,34 @@
          </div></details>
        </div>
      </div>
+   </section>
+   <section class="section directory-section" id="rede">
+    <div class="section-heading"><div><span class="overline blue">REDE TERRITORIAL E PARCEIRIZAÇÃO</span><h2>Equipamentos do SUAS e OSCs do município</h2><p>Consulta pública para articulação territorial. Endereços e contatos são informados apenas quando cadastrados nas fontes oficiais.</p></div></div>
+    <div class="directory-layout">
+      <article class="directory-panel" aria-labelledby="suasDirectoryTitle">
+        <div class="directory-panel-top">
+          <div><span class="directory-label">MDS · CADSUAS</span><h3 id="suasDirectoryTitle">Rede socioassistencial</h3><p>CRAS, CREAS, Centro POP, acolhimento e demais equipamentos cadastrados.</p></div>
+          <label class="directory-filter-label" for="suasType">Tipo de unidade
+            <select id="suasType" aria-label="Filtrar equipamentos SUAS" disabled><option value="">Todos os equipamentos</option></select>
+          </label>
+        </div>
+        <p id="suasStatus" class="directory-status" aria-live="polite">Consulte um município para identificar a rede SUAS.</p>
+        <div id="suasList" class="directory-results" aria-live="polite"></div>
+        <button id="suasMore" type="button" class="btn btn-outline btn-sm directory-more" hidden>Carregar mais equipamentos</button>
+        <p class="directory-source">Fonte: <a href="https://aplicacoes.mds.gov.br/cadsuas/pesquisarConsultaExterna.html" target="_blank" rel="noopener noreferrer">Consulta pública CadSUAS ↗</a>. Unidades e contatos podem mudar.</p>
+      </article>
+      <article class="directory-panel" aria-labelledby="oscDirectoryTitle">
+        <div class="directory-panel-top"><div><span class="directory-label">IPEA · MAPA DAS OSCS</span><h3 id="oscDirectoryTitle">Prospecção de parcerias</h3><p>Organizações cadastradas: nome, natureza jurídica, atividade e contato institucional.</p></div>
+          <label class="directory-filter-label" for="oscFilter">Filtrar resultados carregados
+            <input id="oscFilter" type="search" placeholder="Nome, atuação ou CNPJ" autocomplete="off" disabled>
+          </label>
+        </div>
+        <p id="oscStatus" class="directory-status" aria-live="polite">Consulte um município para identificar potenciais parceiros.</p>
+        <div id="oscList" class="directory-results" aria-live="polite"></div>
+        <button id="oscMore" type="button" class="btn btn-outline btn-sm directory-more" hidden>Carregar mais organizações</button>
+        <p class="directory-source">Fonte: <a href="https://mapaosc.ipea.gov.br/mapa" target="_blank" rel="noopener noreferrer">Mapa das OSCs / Ipea ↗</a>. Município do cadastro não comprova execução de atividades nesse território.</p>
+      </article>
+    </div>
    </section>
    <section class="section" id="analise">
     <div class="section-heading"><div><span class="overline blue">02 / INTELIGÊNCIA SOCIAL</span><h2>Análise territorial</h2><p>Leitura interpretativa estritamente baseada em dados públicos validados.</p></div><button class="btn btn-outline" id="analysisBtn" disabled>✧ Gerar análise social</button></div>
