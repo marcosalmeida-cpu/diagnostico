@@ -305,6 +305,8 @@ async function getDiagnosis(code) {
   for(const row of allBudget)data.push(indicator('orcamento_v5_'+row.id,row.label,row.value??null,row.unit||'R$',row.period||String(budgetDetail?.year||'—'),row.source||'tesouro_dca',row.note));
   const fiscal=budgetDetail?.finances||null;
   for(const [id,label,v,unit,note] of [
+    ['tributos','Impostos, taxas e contribuições de melhoria · receita bruta',fiscal?.taxes,'R$','DCA I-C, rubrica 1.1; não representa toda a arrecadação própria.'],
+    ['transferencias_totais_brutas','Transferências correntes e de capital · brutas',fiscal?.transfers,'R$','DCA I-C, rubricas 1.7 e 2.4; antes de deduções, sem discriminar origem federal ou estadual.'],
     ['receita','Receita realizada líquida de deduções',fiscal?.revenue,'R$','DCA I-C; não equivale à Receita Corrente Líquida.'],
     ['despesa','Despesa liquidada municipal',fiscal?.expenditure,'R$','DCA I-D; não equivale à despesa paga.'],
     ['investimentos','Investimentos liquidados',fiscal?.investments,'R$','DCA I-D, grupo 4.4, quando identificável.'],
