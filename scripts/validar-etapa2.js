@@ -14,7 +14,7 @@ async function main(){
  if(doc.getPageCount()<5)throw Error('Paginação do relatório inválida');
  const dst='/tmp/diagnostico-etapa2-bh.pdf';fs.writeFileSync(dst,bytes);
  const extracted=spawnSync('pdftotext',['-f','2','-l','2','-layout',dst,'-'],{encoding:'utf8',timeout:15000});
- if(extracted.status!==0)throw Error('Não foi possível validar texto da página 2');
+ if(extracted.status!==0)throw Error('Não foi possível validar texto da página 2 (status '+extracted.status+', '+(extracted.stderr||extracted.error?.message||'desconhecido').slice(0,200)+')');
  const second=extracted.stdout;
  for(const term of ['Mapa e organização territorial','Belo Horizonte','DISTRITOS OFICIAIS DO IBGE','Barreiro']){
   if(!second.includes(term))throw Error('Página cartográfica não contém: '+term);
