@@ -11,6 +11,7 @@ const {getFederalProposals}=require('../lib/propostas-transferegov');
 const {getCadunico}=require('../lib/cadunico-mds');
 const {getEducationFrequency}=require('../lib/educacao-ibge');
 const {getSchoolCensus,percentVariation}=require('../lib/censo-escolar-ibge');
+const {buildAudit}=require('../lib/auditoria');
 const {getBenefits}=require('./beneficios-cgu');
 const {getEconomia,getIvcad,getPibPerCapita}=require('./dados-dinamicos');
 const {getByMunicipio:readCagedPE,SOURCE:CAGED_PE_SOURCE}=require('../data/caged2026pe');
@@ -526,7 +527,7 @@ async function getDiagnosis(code) {
     {id:'frequencia_escolar',name:'Frequência escolar por faixa etária · Censo 2022',status:schoolFrequency?'verificado':'indisponivel',source:'ibge_frequencia_2022',reason:'Taxa de residentes que frequentavam escola ou creche por idade, 2022. Não confundir com matrículas em escolas locais.'},
     {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
     {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
-    {id:'cadunico',name:'Cadastro Único · demais agregados municipais',status:'nao_integrado',source:'mds',reason:'Ainda não há integração nacional validada de famílias cadastradas, atualização cadastral e perfil de renda.'},
+    {id:'cadunico',name:'Cadastro Único · agregados municipais',status:!cadunico?'indisponivel':(['families','people','lowerIncome','updated'].every(k=>Number.isFinite(cadunico[k]))?'verificado':'parcial'),source:'mds_cadunico',reason:!cadunico?'A API MDS MI Social não retornou registros municipais válidos nesta consulta. A ausência não equivale a zero.':'Consulta MDS MI Social disponível com competência própria; campos ausentes permanecem indisponíveis.'},
     {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
     {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
     {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
@@ -534,21 +535,27 @@ async function getDiagnosis(code) {
     {id:'economia',name:'Estrutura econômica e emprego assalariado municipal',status:sect&&p?'verificado':sect||p?'parcial':'indisponivel',source:'ibge_cempre',reason:'IBGE PIB 5938 e CEMPRE 9528: dados anuais por atividade da unidade local. Emprego setorial NÃO é demanda aberta por contratações.'},
     {id:'contexto_desocupacao',name:'Desocupação por faixa etária · apenas contexto da UF',status:unemp?'verificado':'indisponivel',source:'ibge_pnad_uf',reason:'Taxas estaduais PNAD contínua. Número de desempregados e taxas municipais por faixa etária não disponíveis para todos os municípios.'},
     {id:'mei',name:'MEIs ativos · consulta oficial sem API integrada',status:'nao_integrado',source:'mei_oficial',reason:'Receita Federal disponibiliza painel público por município e faixa etária, mas não foi validada API aberta para consulta automática em todos os municípios. Não estimar MEI pelo CNPJ ou porte.'},
-    {id:'beneficios',name:'PBF/BPC · CGU por município',status:benefits.bolsa||benefits.bpc?'verificado':'nao_integrado',source:'cgu_beneficios',reason:benefits.configured?'Acesso autenticado, sem agregados atuais validados em uma ou mais séries.':'Necessita CGU_API_KEY configurada como segredo de servidor; sem chave, dados ficam indisponíveis.'},
+    {id:'beneficios',name:'PBF/BPC · CGU por município',status:Number.isFinite(benefits.bolsa)&&Number.isFinite(benefits.bpc)?'verificado':Number.isFinite(benefits.bolsa)||Number.isFinite(benefits.bpc)?'parcial':'indisponivel',source:'cgu_beneficios',reason:benefits.configured?'Acesso autenticado, sem agregados atuais validados em uma ou mais séries.':'Necessita CGU_API_KEY configurada como segredo de servidor; sem chave, dados ficam indisponíveis.'},
     {id:'orcamento_v5',name:'Orçamento por subfunção · SICONFI/DCA',status:budgetDetail?'verificado':'indisponivel',source:'tesouro_dca',reason:budgetDetail?'Dados anuais por função e subfunção. Fundos FIA, Idoso e FMAS não são individualizados pela DCA; proxies devidamente identificadas.':'Sem DCA validada nesta consulta.'},
     {id:'atlas',name:'Atlas/PNUD · IDHM municipal histórico',status:'nao_integrado',source:'atlas_pnud',reason:'Os dados históricos 2010 são públicos, porém a API municipal oficial não foi validada nesta fase.'},
     {id:'mse',name:'SINASE · medidas socioeducativas',status:'nao_integrado',source:'sinase_mdhc',reason:'Sem API pública municipal de MSE em meio aberto validada; dados estaduais não devem ser apresentados como municipais.'},
         {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
+    {id:'emendas_execucao',name:'Execução financeira e repasses efetivos de emendas',status:'nao_integrado',source:'transferegov',reason:'As contagens atuais do Transferegov são propostas de proponentes cadastrados no município. Empenhos, pagamentos, execução territorial e valores líquidos por emenda ainda exigem conciliação dos instrumentos; propostas não equivalem a recursos liberados.'},
+    {id:'educacao_modalidades_2025',name:'EJA, educação profissional e especial · INEP 2025',status:'nao_integrado',source:'inep_censo_2025',reason:'Os microdados oficiais 2025 não puderam ser obtidos com integridade auditada. Sem extração validada não apresentar matrículas dessas modalidades para o município.'},
+    {id:'pop_rua_municipal',name:'População em situação de rua · recorte municipal',status:'nao_integrado',source:'mds',reason:'O cadastro municipal de pessoas e famílias em situação de rua não teve fonte automatizada nacional validada para esta versão. Não inferir total a partir da contagem de equipamentos.'},
+    {id:'riscos_climaticos',name:'Riscos climáticos e desastres por município',status:'nao_integrado',source:'s2id',reason:'Dados de saneamento do Censo 2022 não equivalem a áreas de risco, alertas, eventos ou famílias afetadas. API municipal confiável ainda não integrada.'},
     {id:'publicos',name:'Públicos prioritários',status:'nao_integrado',source:'mds',reason:'Sem agregados estruturados validados para todos os públicos prioritários.'}
   ];
   const valid = data.filter(d => d.status === 'verificado').length;
-  return { version: '4.0-fontes-dinamicas', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
+  const diagnostic = { version: '10.0-auditoria-rastreabilidade', generatedAt: new Date().toISOString(), municipio, indicators:data, modules,
     sources: {...SOURCES,suas_municipal:{name:'MDS/SAGICAD · Indicadores Censo SUAS 2024',url:suasReport?.url||'https://sagicad-mds.github.io/indicadores-de-desenvolvimento/index.html'}}, quality:{verified:valid,total:data.length,coveragePercent:Math.round(valid/data.length*100),
       disclaimer:'Cobertura se refere somente aos indicadores demonstrativos integrados, não à completude do diagnóstico territorial.'},
     notes:['Ausência de informação não significa zero.', 'Competência estatística e data da consulta são conceitos diferentes.',
       'Comparações e recomendações dependem de indicadores equivalentes e validados.',
       'IVCAD sem snapshots: consulta ao vivo à API pública estadual apenas para Pernambuco. No restante do país, painel MDS disponível para consulta manual, mas API nacional não validada.',
       'Novo Caged setembro/2026 PE ainda é snapshot histórico; os dados nacionais de emprego por setor são consultados dinamicamente via IBGE/CEMPRE, não são oportunidades abertas.'] };
+  diagnostic.audit=buildAudit(diagnostic);
+  return diagnostic;
 }
 async function fetchBudget(codigo) {
   for (const year of [2025, 2024]) {

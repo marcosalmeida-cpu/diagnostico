@@ -4,6 +4,7 @@ const {PDFDocument, StandardFonts, rgb} = require('pdf-lib');
 const {getDiagnosis} = require('./diagnostico');
 const {getMunicipalMap} = require('../lib/cartografia-ibge');
 const {analyze} = require('./analise');
+const {buildAudit}=require('../lib/auditoria');
 
 const A4 = [595.28, 841.89];
 // Paleta Rede Cidadã / Guia da Marca - setembro de 2025.
@@ -300,6 +301,43 @@ function analysisPages(pdf,fonts,d,analysis){
   y=text(p,recommendation.reason,44,y,{size:9.5,font:fonts.reg,maxWidth:484,lineHeight:14,color:COLORS.gray})-10;
  }
 }
+function auditPages(pdf,fonts,d){
+ const a=d.audit||buildAudit(d);
+ let view=makePage(pdf,fonts,'Trilha de auditoria','Rastreabilidade dos indicadores e transparência das fontes');
+ let p=view.page,y=view.y;
+ function addLine(message,{font=fonts.reg,size=8.6,color=COLORS.gray,space=8}={}){
+  const need=wrap(message,font,size,493).length*(size+4)+space;
+  if(y-need<100){view=makePage(pdf,fonts,'Trilha de auditoria (continuação)',d.municipio.nome+' / '+d.municipio.uf);p=view.page;y=view.y;}
+  y=text(p,message,44,y,{size,font,maxWidth:493,color,lineHeight:size+4})-space;
+ }
+ function title(label){
+  if(y<158){view=makePage(pdf,fonts,'Trilha de auditoria (continuação)',d.municipio.nome);p=view.page;y=view.y;}
+  y-=7;addLine(label,{font:fonts.bold,size:10.5,color:COLORS.navy,space:10});
+ }
+ addLine('TERRITÓRIO: '+a.municipality.nome+' / '+a.municipality.uf+' · código IBGE '+a.municipality.codigoIBGE,{font:fonts.bold,color:COLORS.navy});
+ addLine('Consulta efetuada em: '+(a.consultedAt?new Date(a.consultedAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):'Não informada'));
+ addLine('Atualização efetiva de cada base: não informada neste conjunto de dados. Não confundir a data de consulta com a competência ou a atualização oficial.');
+ addLine('Indicadores registrados: '+a.total+' · valores verificados: '+a.verified+' · sem valor recuperado: '+a.unavailable+'. Cobertura refere-se SOMENTE aos indicadores implementados.');
+ addLine('Indicadores baseados em espelhos independentes: '+a.sourceQuality.secondaryVerified+' · indicadores de bases/snapshots versionados: '+a.sourceQuality.snapshotVerified+'.');
+ title('INTERPRETAÇÃO DA TRILHA');
+ addLine(a.explanation);
+ addLine(a.limits);
+ title('PROCEDÊNCIA E RESULTADOS DAS FONTES');
+ for(const source of a.sources){
+  addLine(source.name+' · '+source.verified+'/'+source.total+' indicadores com valor · '+source.origin,{font:fonts.bold,size:8.4,color:COLORS.ink,space:3});
+  if(source.url)addLine(source.url,{size:7.2,space:8});
+ }
+ title('LACUNAS DE INTEGRAÇÃO IDENTIFICADAS');
+ if(!a.gaps.length)addLine('Nenhuma pendência foi reportada pelos módulos; esta informação não garante completude do diagnóstico.');
+ for(const gap of a.gaps){
+  addLine(gap.name+' · '+gap.status,{font:fonts.bold,size:8.7,color:COLORS.ink,space:3});
+  addLine(gap.reason,{size:7.8,space:8});
+ }
+ title('AVISOS DE CONSISTÊNCIA');
+ if(!a.warnings.length)addLine('Nenhum alerta estrutural automático nesta consulta. A verificação técnica institucional continua obrigatória.');
+ for(const warning of a.warnings)addLine(warning.id+': '+warning.message,{size:8.2,space:8});
+ addLine('Controle de qualidade: situação verificada exige valor numérico finito. Indisponível não significa zero. IPS 2026 utiliza espelho secundário com procedência declarada.',{size:8});
+}
 function sourcesPages(pdf,fonts,d,analysis){
  let view=makePage(pdf,fonts,'Fontes, rastreabilidade e limitações','Bases públicas identificadas e status de cobertura');
  let {page:p}=view,y=view.y;
@@ -340,6 +378,7 @@ async function generate(data){
  executivePage(pdf,fonts,data);
  indicatorPages(pdf,fonts,data);
  analysisPages(pdf,fonts,data,analysis);
+ auditPages(pdf,fonts,data);
  sourcesPages(pdf,fonts,data,analysis);
  const pages=pdf.getPages();
  for(let i=0;i<pages.length;i++) if(i>0)footer(pages[i],i+1,pages.length,fonts);

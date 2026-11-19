@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="/nav-variants.css">
 <script src="/taxonomy.js" defer></script>
 <script src="/app.js" defer></script>
+<script src="/auditoria-ui.js" defer></script>
 <script src="/rede-diretorios.js" defer></script>
 </head>
 <body>
@@ -145,6 +146,27 @@
     <div class="section-heading"><div><span class="overline blue">03 / TRANSPARÊNCIA</span><h2>Fontes oficiais e auditoria</h2><p>Cada tema indica sua condição de integração. Não há preenchimento artificial de lacunas.</p></div><span class="chip chip-muted">Referências públicas</span></div>
     <details class="sources-disclosure" id="sourcesDisclosure"><summary>Explorar situação das fontes e integrações <span>+</span></summary><div class="modules-grid" id="moduleList"><div class="empty">Escolha um município para verificar as integrações.</div></div></details>
     <div class="footnote"><b>Importante:</b> Data de consulta não é data da competência estatística. A ausência de fonte, erro de API ou dado desatualizado não deve ser apresentado como valor zero ou resultado atual.</div>
+    <div class="audit-workspace" id="auditoria" aria-labelledby="auditTitle">
+      <div class="audit-top"><div><span class="overline blue">ETAPA 4 · RASTREABILIDADE</span><h3 id="auditTitle">Auditoria por indicador</h3><p>Valor, unidade, município, competência, origem, momento de consulta e limites de interpretação. Sem converter ausência em zero.</p></div><button type="button" class="btn btn-outline" id="auditCsv" disabled>Exportar auditoria CSV</button></div>
+      <div class="audit-numbers" role="group" aria-label="Resumo da auditoria">
+        <div><span>Indicadores cadastrados</span><strong id="auditTotal">—</strong></div>
+        <div><span>Com valor verificado</span><strong id="auditVerified">—</strong></div>
+        <div><span>Sem valor recuperado</span><strong id="auditUnavailable">—</strong></div>
+        <div><span>Fontes relacionadas</span><strong id="auditSourceCount">—</strong></div>
+      </div>
+      <p class="audit-context" id="auditContext" aria-live="polite">Escolha um município para gerar a trilha de auditoria.</p>
+      <div class="audit-filters">
+        <label>Pesquisar indicador<input id="auditSearch" type="search" placeholder="Nome ou código do indicador" disabled autocomplete="off"></label>
+        <label>Disponibilidade<select id="auditStatus" disabled><option value="todos">Todos</option><option value="verificado">Verificados</option><option value="indisponivel">Indisponíveis</option></select></label>
+        <label>Fonte<select id="auditSource" disabled><option value="todos">Todas as fontes</option></select></label>
+      </div>
+      <div id="auditRows" class="audit-rows" aria-live="polite"></div>
+      <button id="auditMore" type="button" class="btn btn-outline audit-more" hidden>Exibir mais indicadores</button>
+      <details class="audit-disclosure"><summary>Consultar fontes, pendências e alertas de integridade</summary>
+        <div class="audit-underlying" id="auditUnderlying"><p>Os detalhes serão apresentados após consultar um território.</p></div>
+      </details>
+      <p class="audit-caveat">A coluna “atualização da fonte” não é preenchida com a data de consulta. Quando o provedor não informa a última atualização, o dado aparece como “não informada”. Indicadores de fontes secundárias e snapshots são identificados expressamente.</p>
+    </div>
    </section>
    <section class="report-cta"><div><span class="overline">RELATÓRIO TÉCNICO</span><h2>Do território para a decisão.</h2><p>Exporte o conjunto de indicadores demonstrativos, fontes, limitações e leitura técnica para um PDF diagramado.</p></div><button class="btn btn-lime" id="pdfBottom" disabled>↓ Gerar relatório PDF</button></section>
   </main>
