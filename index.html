@@ -12,8 +12,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/nav-variants.css">
+<link rel="stylesheet" href="/estrategia.css">
 <script src="/taxonomy.js" defer></script>
+<script src="/estrategia-catalogo.js" defer></script>
 <script src="/app.js" defer></script>
+<script src="/estrategia-ui.js" defer></script>
 <script src="/auditoria-ui.js" defer></script>
 <script src="/rede-diretorios.js" defer></script>
 </head>
@@ -43,8 +46,11 @@
   <nav class="side-nav" aria-label="Seções do diagnóstico">
    <a class="active" href="#visao" title="Visão territorial" aria-label="Visão territorial"><svg class="rail-icon" aria-hidden="true"><use href="#ic-overview"/></svg></a>
    <a href="#indicadores" title="Indicadores públicos" aria-label="Indicadores públicos"><svg class="rail-icon" aria-hidden="true"><use href="#ic-data"/></svg></a>
+    <a href="#prisional" title="Sistema Prisional" aria-label="Sistema Prisional"><svg class="rail-icon" aria-hidden="true"><use href="#ic-scales"/></svg></a>
    <a href="#rede" title="Rede SUAS e Parcerias" aria-label="Rede SUAS e Parcerias"><svg class="rail-icon" aria-hidden="true"><use href="#ic-hand"/></svg></a>
    <a href="#analise" title="Leitura social" aria-label="Leitura social"><svg class="rail-icon" aria-hidden="true"><use href="#ic-analysis"/></svg></a>
+    <a href="#financiamento" title="Financiamento e captação" aria-label="Financiamento e captação"><svg class="rail-icon" aria-hidden="true"><use href="#ic-hand"/></svg></a>
+    <a href="#projetos" title="Projetos convergentes" aria-label="Projetos convergentes"><svg class="rail-icon" aria-hidden="true"><use href="#ic-book"/></svg></a>
    <a href="#fontes" title="Fontes e auditoria" aria-label="Fontes e auditoria"><svg class="rail-icon" aria-hidden="true"><use href="#ic-sources"/></svg></a>
   </nav>
   <div class="rail-bottom" title="Ambiente institucional de homologação"><span class="env-dot"></span></div>
@@ -86,7 +92,7 @@
        </div>
        <div class="premium-divider" aria-hidden="true"></div>
        <div id="activeTabs" class="dashboard-tabs premium-tabs" role="group" aria-label="Selecione um recorte territorial"></div>
-       <span class="premium-nav-caption" id="navCaption" aria-live="polite">6 eixos</span>
+       <span class="premium-nav-caption" id="navCaption" aria-live="polite">7 eixos</span>
      </div>
      <div class="active-panel" id="activePanel">
        <div class="active-panel-heading">
@@ -109,6 +115,12 @@
          </div></details>
        </div>
      </div>
+   </section>
+   <section class="section strategy-section" id="prisional">
+    <div class="section-heading"><div><span class="overline blue">JUSTIÇA E REINSERÇÃO SOCIAL</span><h2>Sistema Prisional</h2><p id="prisonTerritory">Aguardando município</p></div><span class="chip chip-muted">Dados municipais em homologação</span></div>
+    <p class="strategy-overview">Informações por estabelecimento localizado no município e sobre atenção à pessoa egressa, separando local da unidade de município de residência. O SISDEPEN publica CSV semestral por unidade; a conciliação municipal precisa ser validada antes de exibir quantidades. Ausência não equivale a zero.</p>
+    <div class="strategy-prison-panel"><div class="strategy-prison-metrics"><h3>Indicadores municipais</h3><div id="prisonIndicators" aria-live="polite"></div></div><div class="strategy-prison-sources"><h3>Fontes nacionais para integração</h3><div id="prisonSources"></div></div></div>
+    <p class="strategy-caution"><strong>Atenção:</strong> pessoas custodiadas em unidades locais não são necessariamente residentes do município. Dados de egressos dependem do território de atendimento divulgado. Não distribuir números estaduais por município.</p>
    </section>
    <section class="section directory-section" id="rede">
     <div class="section-heading"><div><span class="overline blue">REDE TERRITORIAL E PARCEIRIZAÇÃO</span><h2>Equipamentos do SUAS e OSCs do município</h2><p>Consulta pública para articulação territorial. Endereços e contatos são informados apenas quando cadastrados nas fontes oficiais.</p></div></div>
@@ -142,6 +154,19 @@
     <div class="section-heading"><div><span class="overline blue">02 / INTELIGÊNCIA SOCIAL</span><h2>Análise territorial</h2><p>Leitura interpretativa estritamente baseada em dados públicos validados.</p></div><button class="btn btn-outline" id="analysisBtn" disabled>✧ Gerar análise social</button></div>
     <div class="analysis-layout"><div class="analysis-panel"><div class="analysis-head"><span class="spark">✦</span><div><strong id="analysisTitle">Leitura social fundamentada</strong><small id="analysisMode">Aguardando diagnóstico</small></div></div><div id="analysisBody" class="analysis-body"><p>Depois de escolher o município, a plataforma apresentará uma leitura preliminar. A análise generativa depende de integração segura com provedor de IA e nunca substitui a validação humana.</p></div></div><div class="recommend"><span class="overline">CRITÉRIOS DE DECISÃO</span><h3>Antes de propor um projeto</h3><div class="recommend-item"><b>01</b><div><strong>Demanda comprovada</strong><p>Não extrapolar necessidade social a partir de um único indicador.</p></div></div><div class="recommend-item"><b>02</b><div><strong>Rede e capacidade</strong><p>Conferir equipamentos, políticas e parceiros existentes.</p></div></div><div class="recommend-item"><b>03</b><div><strong>Viabilidade operacional</strong><p>Dimensionar público, equipe, recursos e riscos.</p></div></div></div></div>
    </section>
+   <section class="section strategy-section" id="financiamento">
+    <div class="section-heading"><div><span class="overline blue">PARCEIRIZAÇÃO E PROSPECÇÃO</span><h2>Financiamento por causa e público</h2><p id="fundingCaption">Fontes potenciais por temática.</p></div><span class="chip chip-muted">Editais não verificados como abertos</span></div>
+    <p class="strategy-overview">Canais públicos e privados compatíveis em tese com as causas da Rede Cidadã. Nenhuma opção representa liberação de recursos ou elegibilidade automática: edital, regulamentação, conselho, orçamento e qualificação jurídica precisam ser conferidos.</p>
+    <div class="strategy-readiness" id="causeReadiness" aria-label="Evidências territoriais por causa"></div>
+    <div class="strategy-tools"><label for="fundingCause">Filtrar por causa <select id="fundingCause"><option value="todas">Todas as causas</option></select></label><span class="strategy-cause-status">Evidência territorial não é aprovação de financiamento</span></div>
+    <div class="strategy-grid" id="fundingCards" aria-live="polite"></div><button class="btn btn-outline strategy-more" type="button" id="fundingMore" hidden>Exibir outras fontes</button>
+   </section>
+   <section class="section strategy-section" id="projetos">
+    <div class="section-heading"><div><span class="overline blue">REDE CIDADÃ · ADEQUAÇÃO TERRITORIAL</span><h2>Projetos convergentes</h2><p id="projectsCaption">Modelos e referências institucionais para este território.</p></div><span class="chip chip-muted">Compatibilidade preliminar</span></div>
+    <p class="strategy-overview">Distingue metodologias, referências de propostas/parcerias e ideias ainda a estruturar. A existência de um projeto neste catálogo não significa execução no município nem financiamento assegurado. A pertinência exige validação técnica, jurídica e financeira.</p>
+    <div class="strategy-tools"><label for="projectCause">Filtrar por público ou causa <select id="projectCause"><option value="todas">Todas as causas</option></select></label><span class="strategy-cause-status">Vinculação a indicadores públicos verificados</span></div>
+    <div class="strategy-grid" id="projectCards" aria-live="polite"></div><button class="btn btn-outline strategy-more" type="button" id="projectMore" hidden>Exibir outros projetos</button>
+   </section>
    <section class="section" id="fontes">
     <div class="section-heading"><div><span class="overline blue">03 / TRANSPARÊNCIA</span><h2>Fontes oficiais e auditoria</h2><p>Cada tema indica sua condição de integração. Não há preenchimento artificial de lacunas.</p></div><span class="chip chip-muted">Referências públicas</span></div>
     <details class="sources-disclosure" id="sourcesDisclosure"><summary>Explorar situação das fontes e integrações <span>+</span></summary><div class="modules-grid" id="moduleList"><div class="empty">Escolha um município para verificar as integrações.</div></div></details>
@@ -173,6 +198,6 @@
   <footer>© Rede Cidadã · Diagnóstico Territorial Integrado <span>Dados públicos · Fontes auditáveis · Uso técnico sujeito à validação</span></footer>
  </div>
 </div>
-<nav class="mobile-tabs" aria-label="Navegação móvel"><a href="#visao" aria-label="Início"><svg class="rail-icon" aria-hidden="true"><use href="#ic-overview"/></svg><small>Início</small></a><a href="#indicadores" aria-label="Indicadores"><svg class="rail-icon" aria-hidden="true"><use href="#ic-data"/></svg><small>Dados</small></a><a href="#analise" aria-label="Análise"><svg class="rail-icon" aria-hidden="true"><use href="#ic-analysis"/></svg><small>Análise</small></a><a href="#fontes" aria-label="Fontes"><svg class="rail-icon" aria-hidden="true"><use href="#ic-sources"/></svg><small>Fontes</small></a></nav>
+<nav class="mobile-tabs" aria-label="Navegação móvel"><a href="#visao" aria-label="Início"><svg class="rail-icon" aria-hidden="true"><use href="#ic-overview"/></svg><small>Início</small></a><a href="#indicadores" aria-label="Indicadores"><svg class="rail-icon" aria-hidden="true"><use href="#ic-data"/></svg><small>Dados</small></a><a href="#prisional" aria-label="Sistema Prisional"><svg class="rail-icon" aria-hidden="true"><use href="#ic-scales"/></svg><small>Prisional</small></a><a href="#analise" aria-label="Análise"><svg class="rail-icon" aria-hidden="true"><use href="#ic-analysis"/></svg><small>Análise</small></a><a href="#financiamento" aria-label="Financiamento"><svg class="rail-icon" aria-hidden="true"><use href="#ic-hand"/></svg><small>Fomento</small></a><a href="#projetos" aria-label="Projetos"><svg class="rail-icon" aria-hidden="true"><use href="#ic-book"/></svg><small>Projetos</small></a><a href="#fontes" aria-label="Fontes"><svg class="rail-icon" aria-hidden="true"><use href="#ic-sources"/></svg><small>Fontes</small></a></nav>
 </body>
 </html>
