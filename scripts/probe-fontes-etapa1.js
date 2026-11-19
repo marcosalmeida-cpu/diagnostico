@@ -24,7 +24,7 @@ async function run([name,url]){
   const rows=Array.isArray(j)?j:(Array.isArray(j.items)?j.items:[]);
   const samples=rows.filter(x=>/dca/.test(name)?/Receitas|RO1[.]|RO2[.]|TotalReceita/i.test(String(x.cod_conta)+' '+String(x.conta)):true).slice(0,6).map(x=>Object.fromEntries(Object.entries(x).filter(([k])=>['cod_conta','conta','coluna','rotulo','exercicio','cod_ibge','valor','D1C','D2C','D3C','V','instituicao','periodo','demonstrativo','anexo'].includes(k))));
   let detail=null;
-  if(name.startsWith('dca')) detail=rows.filter(x=>x.coluna==='Receitas Brutas Realizadas'&&/^RO[12][.]/.test(String(x.cod_conta))).map(x=>[x.cod_conta,x.conta,x.valor]).filter(x=>/^RO1[.][1-9][.]0[.]|^RO2[.][1-9][.]0[.]/.test(x[0])).slice(0,40);
+  if(name.startsWith('dca')) detail=rows.filter(x=>x.coluna==='Receitas Brutas Realizadas'&&/^RO[12][.]/.test(String(x.cod_conta))).map(x=>[x.cod_conta,x.conta,x.valor]).filter(x=>/^RO1[.][1-9][.]0[.]|^RO2[.][1-9][.]0[.]|^RO1[.]7[.][12][.]|^RO2[.]4[.][12][.]/.test(x[0])).slice(0,70);
   if(name.startsWith('rgf')||name.startsWith('rreo'))detail={
     accounts:[...new Set(rows.map(x=>x.cod_conta))].filter(x=>name.includes('caixa')?/Disponibilidade|Restos|Total/.test(x):name==='rreo25'?/Saldo|Restos|Total/i.test(x):/Divida|Deduc|RCL|Total/i.test(x)).slice(0,30),
     totals:rows.filter(x=>name.includes('caixa')?/^TOTAL/i.test(x.conta):name==='rreo25'?/^TOTAL [(]III[)]/.test(x.conta):/DividaConsolidada|ReceitaCorrenteLiquida/i.test(x.cod_conta)).slice(0,20).map(x=>({cod_conta:x.cod_conta,conta:x.conta,coluna:x.coluna,valor:x.valor}))
