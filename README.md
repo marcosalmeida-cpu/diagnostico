@@ -1,4 +1,6 @@
-# Diagnóstico Territorial Integrado — Rede Cidadã V2
+# Diagnóstico Territorial Integrado — Rede Cidadã (Etapa 4)
+
+> **Status atualizado em 19/11/2026:** a versão de auditoria e transparência acrescenta campos individuais de valor, unidade, competência, município, fonte, hora da consulta e data de atualização quando comprovada, além de filtros, CSV e capítulos de auditoria no PDF. Os limites e a matriz completa de pendências estão em [Auditoria das Etapas 1 a 4](docs/AUDITORIA_ETAPAS_1_A_4_2026-11-19.md). As seções históricas abaixo descrevem evoluções anteriores e não significam que todas as fontes estejam integradas.
 
 Este é o repositório próprio do site **Diagnóstico Territorial Integrado**.
 
