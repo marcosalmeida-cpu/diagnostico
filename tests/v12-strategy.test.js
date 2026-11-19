@@ -41,14 +41,15 @@ test('a correspondência territorial só usa valores numéricos e fontes verific
  assert.ok(catalog.match(d,catalog.projects)[0].verified.length>=1);
 });
 test('Sistema Prisional tem aba, fonte, público, indicadores e limites territoriais',()=>{
- const prison=taxonomy.themes.find(x=>x.id==='prisional');
+ const prison=taxonomy.audiences.find(x=>x.id==='prisional');
  assert.ok(prison);assert.equal(prison.ids.length,7);
- assert.ok(taxonomy.audiences.some(x=>x.id==='egressos'));
+ assert.equal(taxonomy.themes.some(x=>x.id==='prisional'),false);
  for(const id of prison.ids)assert.ok(api.includes("'"+id+"'"));
  for(const id of ['mse_la_acompanhamento','mse_psc_acompanhamento'])assert.ok(api.includes("'"+id+"'"));
  assert.match(api,/sisdepen_unidades/);
- for(const id of ['prisional','financiamento','projetos','prisonIndicators','fundingCards','projectCards','fundingCause','projectCause'])assert.ok(html.includes('id="'+id+'"'),id);
+ for(const id of ['prisonSourcesPanel','financiamento','projetos','prisonSources','fundingCards','projectCards','fundingCause','projectCause'])assert.ok(html.includes('id="'+id+'"'),id);
  assert.match(html,/estrategia-ui.js/);
  assert.match(html,/estrategia-catalogo.js/);
  assert.match(app,/RC_STRATEGY_RENDER\(d\)/);
+ assert.ok(!html.includes('href="#prisional"'),'Sistema Prisional não deve ser item independente de menu');
 });
