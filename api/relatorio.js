@@ -65,6 +65,7 @@ function text(page,string,x,y,style) {
 }
 function rule(page,y,x=42,w=511){page.drawLine({start:{x,y},end:{x:x+w,y},thickness:1,color:COLORS.line})}
 function sectionOf(id){
+ if(id.startsWith('ips_2026_'))return 'IPS BRASIL 2026 - PROGRESSO SOCIAL';
  if(id.startsWith('orcamento_v5_'))return 'ORÇAMENTO PÚBLICO MUNICIPAL - SICONFI/DCA';
  if(id.startsWith('cadunico_'))return 'CADASTRO ÚNICO - INDICADORES MUNICIPAIS';
  if(id.startsWith('suas_bpc_')||id.startsWith('suas_bolsa_'))return 'BENEFÍCIOS SOCIAIS - CGU';
@@ -88,6 +89,7 @@ function sectionOf(id){
 function formatIndicator(v){
  if(v.value===null||v.value===undefined)return 'Indisponível';
  if(v.unit==='R$')return currency.format(v.value);
+ if(v.unit==='pontos (0–100)')return number.format(v.value)+' / 100 pontos';
  if(v.unit==='índice (0–1)')return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}).format(v.value)+' (0 a 1)';
  const suffix=v.unit==='pessoas'?' pessoas':v.unit==='%'?'%':v.unit==='km²'?' km²':v.unit==='hab./km²'?' hab./km²':v.unit==='postos potenciais'?' postos potenciais':v.unit==='unidades'?' unidades':v.unit==='famílias'?' famílias':v.unit==='domicílios'?' domicílios':'';
  return number.format(v.value)+suffix;
