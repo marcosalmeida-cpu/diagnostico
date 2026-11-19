@@ -18,3 +18,4 @@ jobs:
         with:
           node-version: '22'
       - run: node scripts/probe-social-nacional.js
+      - run: node scripts/probe-sisan-files.js
