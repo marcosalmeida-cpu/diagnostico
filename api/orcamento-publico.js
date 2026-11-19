@@ -57,6 +57,15 @@ function sumUnique(rows,cod,col){
  const vals=rows.filter(x=>x.cod_conta===cod&&x.coluna===col).map(x=>nonnegative(x.valor)).filter(x=>x!==null);
  return vals.length===1?vals[0]:null;
 }
+// Rubricas agregadas do DCA I-C, sem somar pais e filhos.
+function revenueCategories(rows){
+ const unique=code=>sumUnique(rows,code,'Receitas Brutas Realizadas');
+ const taxes=unique('RO1.1.0.0.00.0.0');
+ const currentTransfers=unique('RO1.7.0.0.00.0.0');
+ const capitalTransfers=unique('RO2.4.0.0.00.0.0');
+ const transfers=currentTransfers!==null&&capitalTransfers!==null?currentTransfers+capitalTransfers:null;
+ return {taxes,currentTransfers,capitalTransfers,transfers};
+}
 function finances(income,expense,year){
  const gross=sumUnique(income,'ReceitasExcetoIntraOrcamentarias','Receitas Brutas Realizadas');
  const fundeb=sumUnique(income,'ReceitasExcetoIntraOrcamentarias','Deduções - FUNDEB');
@@ -65,7 +74,7 @@ function finances(income,expense,year){
  const spent=sumUnique(expense,'TotalDespesas','Despesas Liquidadas');
  const investment=sumUnique(expense,'DO4.4.00.00.00.00','Despesas Liquidadas');
  const share=received>0&&spent!==null?spent/received*100:null;
- return {year,revenue:received,expenditure:spent,investments:investment,expenditureShare:share};
+ return {year,revenue:received,expenditure:spent,investments:investment,expenditureShare:share,...revenueCategories(income)};
 }
 async function getBudget(code){
  if(!/^\d{7}$/.test(code))return null;
@@ -84,4 +93,4 @@ async function getBudget(code){
  }
  return null;
 }
-module.exports={getBudget,parseBudget,finances,budgetLines,findUnique};
+module.exports={getBudget,parseBudget,finances,revenueCategories,budgetLines,findUnique};
