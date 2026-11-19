@@ -65,3 +65,6 @@ jobs:
       - name: Validar educação em BH, SP e Ribeirão das Neves
         if: github.ref == 'refs/heads/feat/v9-etapa3-educacao-juventude'
         run: node scripts/validar-etapa3.js
+      - name: Verificar PDF completo Etapa 3
+        if: github.ref == 'refs/heads/feat/v9-etapa3-educacao-juventude'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils && node scripts/validar-relatorio-etapa3.js
