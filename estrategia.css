@@ -1,0 +1,46 @@
+/* Complemento V12: seções estratégicas sem alterar os estilos existentes. */
+.strategy-section{scroll-margin-top:76px;padding-top:38px}
+.strategy-overview{font-size:12px;line-height:1.65;color:#536681;max-width:1020px;margin:0 0 18px}
+.strategy-readiness{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 22px}
+.strategy-cause{padding:15px 16px;background:#fff;border:1px solid #e3eaf6;border-radius:13px;display:grid;gap:5px;min-width:0}
+.strategy-cause b{font-size:12px;color:#183b7b}
+.strategy-cause strong{font-size:13px;color:#243a5a}
+.strategy-cause small{font-size:10px;line-height:1.5;color:#687a94}
+.strategy-tools{display:flex;flex-wrap:wrap;align-items:center;gap:9px;justify-content:space-between;margin:0 0 18px}
+.strategy-tools label{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:#273f66}
+.strategy-tools select{max-width:300px;min-height:38px;border:1px solid #cedaf0;border-radius:9px;padding:5px 9px;color:#173d77;background:#fff;font:inherit}
+.strategy-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.strategy-card{display:flex;flex-direction:column;gap:10px;min-width:0;background:#fff;border:1px solid #e1e9f5;border-radius:15px;padding:20px;box-shadow:0 8px 26px rgba(3,34,214,.035)}
+.strategy-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.strategy-eyebrow{font-size:9px;letter-spacing:.065em;text-transform:uppercase;color:#3058a1;font-weight:800}
+.strategy-status{font-size:9px;font-weight:800;color:#536681;background:#f0f4fa;padding:5px 8px;border-radius:14px}
+.strategy-card h3{font-size:16px;line-height:1.35;color:#0d2f7d;margin:0}
+.strategy-card .strategy-audience{font-size:11px;color:#526a90;font-weight:650;margin:0}
+.strategy-card .strategy-body{font-size:12px;line-height:1.65;color:#304563;margin:0}
+.strategy-evidence{border-top:1px solid #edf1f8;padding-top:10px}
+.strategy-evidence small{font-size:9px;font-weight:800;letter-spacing:.06em;color:#3058a1}
+.strategy-evidence p{font-size:10.5px;color:#314a6c;line-height:1.6;margin:4px 0}
+.strategy-evidence strong{font-weight:750}
+.strategy-evidence .strategy-warning{color:#956627}
+.strategy-caveat{font-size:10.5px;line-height:1.6;color:#61738a;margin:0}
+.strategy-link{font-size:11px;font-weight:800;color:#0739bd;text-decoration:underline;text-underline-offset:3px;display:inline-flex;align-items:center;margin-top:auto;align-self:flex-start}
+.strategy-link:hover{color:#001784}
+.strategy-more{display:block;margin:17px auto 0}
+.strategy-prison-panel{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+.strategy-prison-metrics,.strategy-prison-sources{padding:18px;background:#fff;border:1px solid #e2eaf5;border-radius:15px;min-width:0}
+.strategy-prison-metrics h3,.strategy-prison-sources h3{margin:0 0 13px;font-size:14px;color:#0d2f7d}
+.strategy-prison-metric{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #edf1f7}
+.strategy-prison-metric:last-child{border-bottom:0}
+.strategy-prison-metric>div{display:grid;gap:4px}
+.strategy-prison-metric b{font-size:11px;color:#304563}
+.strategy-prison-metric small{font-size:9.5px;color:#72849a;line-height:1.4}
+.strategy-prison-metric strong{white-space:nowrap;font-size:11px;color:#926522}
+.strategy-source{padding:11px 0;border-bottom:1px solid #edf1f7;display:grid;gap:6px}
+.strategy-source:last-child{border-bottom:0}
+.strategy-source b{font-size:11px;color:#304563}
+.strategy-source p{font-size:10.5px;line-height:1.55;color:#4d6179;margin:0}
+.strategy-source small{font-size:9.5px;color:#916822}
+.strategy-caution{font-size:11px;line-height:1.65;color:#536681;margin:15px 0;padding:12px 15px;background:#f6f8fd;border-left:3px solid #ffc000;border-radius:5px}
+.strategy-cause-status{font-size:10px;font-weight:700;color:#214581}
+@media(max-width:1000px){.strategy-grid{grid-template-columns:1fr}.strategy-prison-panel{grid-template-columns:1fr}.strategy-readiness{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:630px){.strategy-section{padding-top:24px}.strategy-readiness{grid-template-columns:1fr 1fr;gap:7px}.strategy-cause{padding:11px}.strategy-cause b{font-size:10px}.strategy-cause strong{font-size:11px}.strategy-grid{gap:10px}.strategy-card{padding:15px}.strategy-card h3{font-size:14px}.strategy-tools{align-items:stretch}.strategy-tools label,.strategy-tools select{width:100%;max-width:100%}.strategy-prison-metric strong{font-size:10px}.strategy-prison-metric small{font-size:8px}}
