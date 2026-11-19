@@ -7,6 +7,7 @@ const {getBudget,budgetLines}=require('./orcamento-publico');
 const {getFiscalBalances}=require('./fiscal-rgf-rreo');
 const {getFiscalPulse}=require('./atividade-fiscal');
 const {getIps2026}=require('./ips-brasil');
+const {getFederalProposals}=require('./propostas-transferegov');
 const {getCadunico}=require('./cadunico-mds');
 const {getBenefits}=require('./beneficios-cgu');
 const {getEconomia,getIvcad,getPibPerCapita}=require('./dados-dinamicos');
@@ -21,6 +22,8 @@ function readIdeb2025(code){
 }
 
 const SOURCES = {
+  transferegov_discricionarias: {name:'Transferegov · propostas discricionárias e legais (Atos Preparatórios)',url:'https://api-publica.transferegov.gestao.gov.br/discricionarias/docs'},
+  transferegov_parcerias: {name:'Transferegov · propostas no módulo Gestão de Parcerias',url:'https://api-publica.transferegov.gestao.gov.br/parcerias/docs'},
   ips_brasil_2026: {name:'IPS Brasil 2026 · espelho independente (não é API oficial)',url:'https://raw.githubusercontent.com/ernandes-sobreira/IPS-BRASIL/main/conhece_brasil_v1.json'},
   ips_brasil_oficial: {name:'IPS Brasil · portal oficial de conferência',url:'https://ipsbrasil.org.br/explore/data'},
   ibge: { name: 'IBGE · Censo e estimativas', url: 'https://servicodados.ibge.gov.br/api/docs/' },
@@ -193,7 +196,8 @@ async function getDiagnosis(code) {
     getPibPerCapita(codigo),
     getCadunico(codigo),
     getFiscalBalances(codigo,new Date().getUTCFullYear()-1),
-    getFiscalPulse(codigo)
+    getFiscalPulse(codigo),
+    getFederalProposals(codigo)
   ]);
   const census = results[0].status === 'fulfilled' ? seriesValues(results[0].value, codigo) : {};
   const estimated = results[1].status === 'fulfilled' ? seriesValues(results[1].value, codigo) : {};
@@ -225,6 +229,7 @@ async function getDiagnosis(code) {
   const balances=results[16].status==='fulfilled'?results[16].value:null;
   const fiscalPulse=results[17].status==='fulfilled'?results[17].value:null;
   const ips2026=getIps2026(codigo);
+  const federalProposals=results[18].status==='fulfilled'?results[18].value:null;
   const caged = uf==='PE' ? readCagedPE(codigo) : null;
   const sanitation=extractSaneamento(
     results[8].status==='fulfilled'?results[8].value:null,
@@ -375,6 +380,15 @@ async function getDiagnosis(code) {
   for(const [id,label,unit,source,note] of pendingTerritorial)
     data.push(indicator(id,label,null,unit,'—',source,note));
 
+  // Propostas federais, não empenhos nem repasses; município do proponente/recebedor.
+  data.push(
+    indicator('orcamento_v5_propostas_federais_2026','Propostas federais em 2026 · município do proponente',
+      federalProposals?.annual??null,'propostas','2026','transferegov_discricionarias',
+      'Transferegov Discricionárias e Legais: total de propostas de proponentes cadastrados no município, inclusive rejeitadas e em análise. NÃO representa recurso transferido nem execução local.'),
+    indicator('orcamento_v5_propostas_parcerias_historico','Propostas do módulo Gestão de Parcerias · histórico',
+      federalProposals?.partnershipHistory??null,'propostas','histórico','transferegov_parcerias',
+      'Transferegov Gestão de Parcerias: total histórico de propostas do recebedor localizado no município. NÃO equivale a parcerias formalizadas, projetos executados no território ou recursos pagos.')
+  );
   // Série IPS 2026: proveniência secundária, verificada contra códigos IBGE.
   const ipsLabels=[
     ['ips_2026_geral','IPS Brasil 2026 · Índice de Progresso Social'],
