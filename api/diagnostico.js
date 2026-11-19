@@ -27,6 +27,10 @@ function readIdeb2025(code){
 }
 
 const SOURCES = {
+  sisdepen_unidades: {name:'SENAPPEN · SISDEPEN 19º ciclo, dados por estabelecimento',url:'https://www.gov.br/senappen/pt-br/servicos/sisdepen/bases-de-dados/2025'},
+  cnj_geopresidios: {name:'CNJ · Geopresídios, inspeções de estabelecimentos',url:'https://geopresidios.cnj.jus.br/'},
+  cnj_cniups: {name:'CNJ · CNIUPS, inspeções de programas socioeducativos',url:'https://www.cnj.jus.br/sistema-carcerario/cadastro-nacional-de-inspecao-de-unidades-e-programas-socioeducativos-cniups/'},
+  senappen_egressos: {name:'SENAPPEN · Política Nacional de Atenção à Pessoa Egressa',url:'https://www.gov.br/senappen/pt-br/acesso-a-informacao/politicas-acoes-e-programas/politicas-penais/atencao-a-pessoa-egressa'},
   poprua_ufmg_historico: {name:'Observatório Pop Rua UFMG · população cadastrada em situação de rua, série nacional 2012–2021',url:'https://obpoprua.direito.ufmg.br/repositorio_dados_tabelas.html'},
   mds_beneficios_misocial: {name:'MDS/MI Social · Bolsa Família e BPC por município (agregado mensal)',url:'https://www.gov.br/mds/pt-br/orgaos/SAGICAD/dados-e-ferramentas-informacionais/dados-e-ferramentas-do-cadastro-unico/'},
   cecad_public: {name:'MDS · CECAD 2.0, CadÚnico e população em situação de rua',url:'https://cecad.cidadania.gov.br/tab_cad.php'},
@@ -546,6 +550,19 @@ async function getDiagnosis(code) {
     data.push(indicator('educacao_inep_variacao_'+key,label,percentVariation(schoolCensus?.fields?.[key])??null,
       '%','2024–2025','inep_censo_2025','Variação anual relativa do estoque de matrículas de escolas no município; não representa abandono ou evasão escolar, nem participação dos jovens residentes.'));
   }
+  // Sistema Prisional: nomes, unidades e fontes prontos para importação oficial.
+  // O CSV semestral SISDEPEN ainda requer vínculo IBGE e deduplicação homologados.
+  for(const [id,label,unit,source,note] of [
+    ['prisional_unidades_estabelecimentos','Estabelecimentos prisionais no município','unidades','sisdepen_unidades','Necessário vínculo municipal por localização da unidade; ausência não significa zero.'],
+    ['prisional_capacidade_total','Capacidade declarada das unidades prisionais locais','vagas','sisdepen_unidades','Somente somar unidades com registros completos do mesmo ciclo, sem duplicidade de regimes.'],
+    ['prisional_pessoas_custodiadas','Pessoas custodiadas em unidades instaladas no município','pessoas','sisdepen_unidades','Local de custódia não equivale à residência nem à origem das pessoas presas.'],
+    ['prisional_ocupacao_pct','Taxa de ocupação prisional no município','%','sisdepen_unidades','Requer população e capacidade da mesma cobertura e competência.'],
+    ['prisional_educacao_pessoas','Pessoas em atividades educacionais nas unidades locais','pessoas','sisdepen_unidades','Ainda não homologado como total municipal.'],
+    ['prisional_trabalho_pessoas','Pessoas em atividades laborais nas unidades locais','pessoas','sisdepen_unidades','Não representa oportunidades de trabalho disponíveis.'],
+    ['prisional_egressos_atendidos','Pessoas egressas acompanhadas por serviços no município','pessoas','senappen_egressos','Serviço localizado não implica população egressa residente no município.']
+  ])data.push(indicator(id,label,null,unit,'—',source,note));
+  data.push(indicator('mse_la_acompanhamento','Adolescentes acompanhados em Liberdade Assistida · RMA/CREAS',null,'adolescentes','—','rma_meio_aberto','RMA municipal ainda não homologado; atendimento mensal não é estoque de indivíduos únicos.'));
+  data.push(indicator('mse_psc_acompanhamento','Adolescentes acompanhados em Prestação de Serviços à Comunidade · RMA/CREAS',null,'adolescentes','—','rma_meio_aberto','RMA municipal ainda não homologado; atendimento mensal não é estoque de indivíduos únicos.'));
   const groupOk = (ids) => ids.some(id => data.find(d=>d.id===id)?.status==='verificado');
   const modules = [
     {id:'demografia',name:'Perfil demográfico',status:groupOk(['populacao_censo','populacao_estimativa'])?'verificado':'indisponivel',source:'ibge'},
@@ -568,6 +585,10 @@ async function getDiagnosis(code) {
     {id:'beneficios',name:'Bolsa Família e BPC · MDS e CGU por município',status:(Number.isFinite(pbfMds?.beneficiaries)||Number.isFinite(benefits?.bolsa?.beneficiaries))&&(Number.isFinite(bpcMds?.beneficiaries)||Number.isFinite(benefits?.bpc?.beneficiaries))?'verificado':(Number.isFinite(pbfMds?.beneficiaries)||Number.isFinite(benefits?.bolsa?.beneficiaries)||Number.isFinite(bpcMds?.beneficiaries)||Number.isFinite(benefits?.bpc?.beneficiaries))?'parcial':'indisponivel',source:'mds_beneficios_misocial',reason:'MDS MI Social (consulta nacional mensal pública), complementado opcionalmente por API CGU autenticada quando chave institucional estiver configurada. No momento as rotas públicas do MDS podem redirecionar para manutenção; não preencher com zero.'},
     {id:'orcamento_v5',name:'Orçamento por subfunção · SICONFI/DCA',status:budgetDetail?'verificado':'indisponivel',source:'tesouro_dca',reason:budgetDetail?'Dados anuais por função e subfunção. Fundos FIA, Idoso e FMAS não são individualizados pela DCA; proxies devidamente identificadas.':'Sem DCA validada nesta consulta.'},
     {id:'atlas',name:'Atlas/PNUD · IDHM municipal histórico',status:'nao_integrado',source:'atlas_pnud',reason:'Os dados históricos 2010 são públicos, porém a API municipal oficial não foi validada nesta fase.'},
+    {id:'sisdepen',name:'Sistema prisional · unidades e custódia por município',status:'nao_integrado',source:'sisdepen_unidades',reason:'Planilhas/CSV oficiais SISDEPEN por unidade; vínculo IBGE, cobertura e capacidade ainda não homologados. Nenhuma quantidade inventada.'},
+    {id:'geopresidios',name:'Geopresídios / CNJ · inspeções prisionais',status:'nao_integrado',source:'cnj_geopresidios',reason:'API pública e painel disponíveis; esquema de extração municipal ainda não homologado.'},
+    {id:'cniups',name:'CNIUPS / CNJ · unidades e programas socioeducativos',status:'nao_integrado',source:'cnj_cniups',reason:'Painel público de inspeções socioeducativas; quantitativos municipais ainda não extraídos com integridade.'},
+    {id:'egressos',name:'Atenção à pessoa egressa · PNAPE',status:'nao_integrado',source:'senappen_egressos',reason:'Serviços e programas públicos identificados; sem agregado validado por município de atendimento e população de origem.'},
     {id:'mse',name:'Medidas socioeducativas municipais · RMA/CREAS (LA/PSC)',status:'nao_integrado',source:'rma_meio_aberto',reason:'Os registros municipais de LA e PSC do SUAS são a fonte correta para o meio aberto, mas o acesso automático agregado não foi validado. O SINASE 2025 do meio fechado agrega sobretudo por UF, não por município.'},
         {id:'trabalho',name:'Trabalho e renda · Novo Caged 09/2026',status:uf==='PE'?(caged?(caged.salario===null?'parcial':'verificado'):'indisponivel'):'nao_integrado',source:uf==='PE'?'caged_pe':'mte',reason:uf==='PE'?(caged?'Movimentações de emprego formal de setembro/2026, conforme curadoria MTE/Condepe-Fidem. Salário pode estar ausente.':'Sem registro completo do movimento mensal nesta base estadual; ausência não é zero.'):'A fonte MTE/Novo Caged integrada nesta etapa é estadual (PE), outros estados exigem arquivos próprios.'},
     {id:'lgbt_municipal',name:'População LGBTQIA+ por município · censo nacional',status:'nao_integrado',source:'ibge_pns_lgbt',reason:'O Censo Demográfico 2022 não coletou orientação sexual nem identidade de gênero; PNS 2019 é pesquisa amostral e não fornece total confiável para todos os municípios. Não aplicar percentuais nacionais ao território.'},
