@@ -14,13 +14,24 @@ async function fetchDca(code,year,annex){
  return Array.isArray(rows)&&rows.length>0&&rows.length<10000?
   rows.filter(x=>String(x.cod_ibge)===code && Number(x.exercicio)===year):[];
 }
+function nonnegative(value){
+ if(value===null||value===undefined||String(value).trim()==='')return null;
+ const n=Number(value);
+ return Number.isFinite(n)&&n>=0?n:null;
+}
 function findUnique(rows,code,col){
  const v=rows.filter(x=>x.cod_conta==='TotalDespesas'&&String(x.conta||'').startsWith(code+' - ')&&x.coluna===col&&x.rotulo==='Total Geral da Despesa por Função')
-  .map(x=>Number(x.valor)).filter(x=>Number.isFinite(x)&&x>=0);
+  .map(x=>nonnegative(x.valor)).filter(x=>x!==null);
  return v.length===1?v[0]:null;
 }
 const budgetLines=[
  ['assistencia_total','Assistência Social — função 08','08','Função específica'],
+ ['assistencia_deficiencia','Assistência à pessoa com deficiência — 08.242','08.242','Subfunção contábil 08.242'],
+ ['assistencia_comunitaria','Assistência comunitária — 08.244','08.244','Subfunção contábil 08.244'],
+ ['educacao_total','Educação — função 12','12','Despesas liquidadas na função Educação'],
+ ['ensino_profissional','Ensino profissional — 12.363','12.363','Subfunção Ensino Profissional'],
+ ['educacao_eja','Educação de jovens e adultos — 12.366','12.366','Subfunção EJA'],
+ ['fomento_trabalho','Fomento ao trabalho — 11.334','11.334','Subfunção Fomento ao Trabalho'],
  ['crianca_adolescente','Assistência à criança e ao adolescente — 08.243','08.243','Subfunção contábil; não identifica FIA nem investimento total na infância'],
  ['pessoas_idosas','Assistência à pessoa idosa — 08.241','08.241','Subfunção contábil; não identifica o Fundo Municipal do Idoso'],
  ['trabalho_renda','Trabalho — função 11','11','Função Trabalho; não equivale a vagas abertas'],

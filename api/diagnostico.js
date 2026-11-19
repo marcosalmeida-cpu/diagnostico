@@ -36,6 +36,15 @@ const SOURCES = {
   tesouro_dca: {name:'STN/SICONFI · DCA, funções e subfunções',url:'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos'},
   atlas_pnud: {name:'Atlas Brasil/PNUD · IDHM e indicadores históricos',url:'https://www.atlasbrasil.org.br/'},
   sinase_mdhc: {name:'MDHC · Levantamentos do SINASE',url:'https://www.gov.br/mdh/pt-br/navegue-por-temas/crianca-e-adolescente/levantamentos-nacionais-do-sinase/levantamentos-nacionais'},
+  tesouro_rgf: {name:'STN/SICONFI · RGF (dívida e disponibilidade de caixa)',url:'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos'},
+  tesouro_rreo: {name:'STN/SICONFI · RREO (restos a pagar)',url:'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos'},
+  tesouro_msc: {name:'STN/SICONFI · Matriz de Saldos Contábeis',url:'https://www.tesourotransparente.gov.br/consultas/consultas-siconfi/siconfi-api-de-dados-abertos'},
+  transferegov: {name:'Transferegov · API pública de transferências e emendas',url:'https://api-publica.transferegov.gestao.gov.br/'},
+  cgu_emendas: {name:'CGU · Portal da Transparência, emendas parlamentares',url:'https://api.portaldatransparencia.gov.br/'},
+  s2id: {name:'MIDR · Sistema Integrado de Informações sobre Desastres',url:'https://www.gov.br/mdr/pt-br/assuntos/protecao-e-defesa-civil/sistema-integrado-de-informacoes-sobre-desastres'},
+  cemaden: {name:'Cemaden · Monitoramento e alertas de risco',url:'https://www.gov.br/cemaden/pt-br'},
+  sgb: {name:'SGB · Cartografia de áreas de risco geológico',url:'https://www.sgb.gov.br/'},
+  mdhc: {name:'MDHC · Dados abertos e direitos humanos',url:'https://www.gov.br/mdh/pt-br/acesso-a-informacao/dados-abertos'},
   suas: { name: 'MDS · Censo SUAS', url: 'https://www.gov.br/mds/pt-br/acoes-e-programas/suas/gestao-do-suas/vigilancia-socioassistencial-1/censo-suas' }
 };
 
@@ -300,7 +309,37 @@ async function getDiagnosis(code) {
     ['endividamento','Dívida Consolidada Líquida',null,'R$','Exige RGF Anexo 2: não inventar a partir das despesas da DCA.']
   ])data.push(indicator('orcamento_v5_'+id,label,v??null,unit,fiscal?.year?String(fiscal.year):'—','tesouro_dca',note));
 
-  // PIB e pessoal assalariado são dados municipais; taxas PNAD são CONTEXTO da UF.
+  // V6: campos tipados e auditáveis. A existência de fonte não comprova dado municipal.
+  // Até validar os esquemas e recortes municipais, preservar null, nunca zero.
+  const pendingFiscal=[
+    ['arrecadacao_propria','Arrecadação própria municipal','tesouro_dca','Receitas tributárias e outras receitas próprias: requer seleção auditada das rubricas DCA I-C/MSC.'],
+    ['transferencias_uniao','Transferências recebidas da União','tesouro_dca','Requer classificação de origem na DCA/MSC, evitando dupla contagem.'],
+    ['transferencias_estados','Transferências recebidas dos estados','tesouro_dca','Requer classificação de origem na DCA/MSC.'],
+    ['dependencia_transferencias','Dependência de transferências','tesouro_dca','Percentual exige receitas próprias e transferências da mesma competência.'],
+    ['divida_consolidada','Dívida consolidada','tesouro_rgf','RGF Anexo 2; não inferir de despesa liquidada.'],
+    ['restos_pagar','Restos a pagar','tesouro_rreo','RREO/RGF; distinguir processados, não processados e pagamentos.'],
+    ['disponibilidade_caixa','Disponibilidade de caixa','tesouro_rgf','RGF Anexo 5; distinguir disponibilidade bruta e líquida.'],
+    ['emendas_706','Transferências especiais da União · fonte 706','tesouro_msc','MSC; fonte de recurso não identifica parlamentar ou beneficiário final.'],
+    ['emendas_710','Transferências especiais estaduais · fonte 710','tesouro_msc','MSC; verificar classificação vigente no exercício.'],
+    ['emendas_federais','Emendas federais identificadas','cgu_emendas','CGU/Transferegov: sem consulta municipal validada e chave necessária, não estimar.'],
+    ['parcerias_osc','Repasses identificados a OSCs','transferegov','Cobertura federal parcial; não representa todas as parcerias municipais.']
+  ];
+  for(const [id,label,source,note] of pendingFiscal)
+    data.push(indicator('orcamento_v5_'+id,label,null,id==='dependencia_transferencias'?'%':'R$', '—',source,note));
+  const pendingTerritorial=[
+    ['clima_desastres','Desastres registrados no município','ocorrências','s2id','Requer recorte IBGE, período e validação de registros.'],
+    ['clima_afetados','Pessoas afetadas por desastres','pessoas','s2id','Não inferir número de afetados a partir de ocorrências.'],
+    ['clima_alertas','Alertas hidrológicos e geológicos','alertas','cemaden','A cobertura de monitoramento não abrange necessariamente todos os municípios.'],
+    ['clima_areas_risco','Áreas mapeadas de risco','áreas','sgb','Mapeamento geológico não equivale à população exposta.'],
+    ['pop_rua_atendimento','Atendimentos à população em situação de rua','atendimentos','suas','RMA/Censo SUAS requer competência e abrangência municipal.'],
+    ['mse_meio_aberto','Adolescentes em MSE em meio aberto','pessoas','sinase_mdhc','Sem integração municipal validada; não usar total estadual.'],
+    ['lgbt_servicos','Serviços públicos especializados LGBTQIA+','serviços','mdhc','Existência de serviços não estima população LGBTQIA+.'],
+    ['lgbt_denuncias','Denúncias de violações LGBTQIA+','registros','mdhc','Registros não equivalem à prevalência de violência nem à população.']
+  ];
+  for(const [id,label,unit,source,note] of pendingTerritorial)
+    data.push(indicator(id,label,null,unit,'—',source,note));
+
+  // PIB e pessoal assalariado são dados municipais; taxas PNAD são contexto da UF.
   const p=economic.gdp||null,sect=economic.sectors||null,unemp=economic.unemployment||null;
   data.push(
     indicator('economia_pib_municipal','PIB municipal a preços correntes',p?.pib??null,'R$',p?.year??'—','ibge_pib','Valor nominal produzido no município; não equivale à renda da população e não é deflacionado.'),
