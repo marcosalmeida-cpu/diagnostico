@@ -52,3 +52,6 @@ jobs:
       - name: Verificar auditoria real, educação e PDF municipal · Etapa 4
         if: github.ref == 'refs/heads/feat/v10-etapa4-auditoria-rastreabilidade'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils && node scripts/validar-relatorio-etapa3.js
+      - name: Verificar auditoria social, Pop Rua nacional e PDF municipal · V11
+        if: github.ref == 'refs/heads/feat/v11-protecao-social-nacional'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils && node scripts/validar-relatorio-etapa3.js
