@@ -67,3 +67,7 @@ jobs:
         if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
         continue-on-error: true
         run: node scripts/probe-transferencias-ano.js
+      - name: Sondar APIs Mapa das OSCs e CadSUAS
+        if: github.ref == 'refs/heads/feat/v8-etapa2-ips-cartografia'
+        continue-on-error: true
+        run: node scripts/probe-diretorios.js
