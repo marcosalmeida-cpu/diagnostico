@@ -314,20 +314,22 @@ async function getDiagnosis(code) {
     ['cadunico_pessoas','Pessoas inscritas no CadÚnico','pessoas',cadunico?.people],
     ['cadunico_pessoas_pct','Pessoas inscritas / residentes do Censo 2022','%',ratioPeople],
     ['cadunico_baixa_renda','Famílias com renda per capita até 1/2 salário mínimo','famílias',cadunico?.lowerIncome],
-    ['cadunico_pobreza','Famílias na linha de pobreza (perfil PBF)','famílias',cadunico?.poverty],
-    ['cadunico_extrema_pobreza','Famílias em extrema pobreza · recorte CadÚnico','famílias',null],
+    ['cadunico_pobreza','Famílias na faixa de pobreza, excluída a extrema pobreza','famílias',cadunico?.poverty],
+    ['cadunico_extrema_pobreza','Famílias em extrema pobreza · CadÚnico','famílias',cadunico?.extremePovertyFamilies],
+    ['cadunico_pobreza_total','Famílias em pobreza ou extrema pobreza · CadÚnico','famílias',cadunico?.povertyAndExtremeFamilies],
+    ['cadunico_extrema_pobreza_pessoas','Pessoas em extrema pobreza · CadÚnico','pessoas',cadunico?.extremePovertyPeople],
     ['cadunico_pop_rua','Famílias em situação de rua','famílias',null],
     ['cadunico_atualizadas','Famílias com cadastro atualizado','famílias',cadunico?.updated],
     ['cadunico_atualizacao_pct','Taxa de atualização cadastral publicada pelo MDS','%',cadunico?.updateRate]
   ];
   for(const [id,label,unit,value] of cadItems)
-    data.push(indicator(id,label,value??null,unit,id==='cadunico_extrema_pobreza'||id==='cadunico_pop_rua'?'—':cadPeriod,
-     id==='cadunico_extrema_pobreza'||id==='cadunico_pop_rua'?'cecad_public':'mds_cadunico',
-     id==='cadunico_extrema_pobreza'||id==='cadunico_pop_rua'?
-     'A consulta nacional pública CECAD permite tabular o recorte municipal, mas não foi validado endpoint automático que retorne valores estruturados. Não confundir famílias cadastradas com a população total em extrema pobreza ou rua; a ausência do valor não é zero.':
+    data.push(indicator(id,label,value??null,unit,id==='cadunico_pop_rua'?'—':cadPeriod,
+     id==='cadunico_pop_rua'?'cecad_public':'mds_cadunico',
+     id==='cadunico_pop_rua'?
+     'A consulta CECAD municipal de famílias em situação de rua ainda não retorna série estruturada validada automaticamente; famílias cadastradas não representam toda a população em situação de rua. A ausência não é zero.':
      id==='cadunico_familias_por100'||id==='cadunico_pessoas_pct'?
      'Numerador: CadÚnico '+cadPeriod+'; denominador: Censo 2022. Anos diferentes, proporção indicativa.':
-     'Agregado mensal municipal MDS/MI Social. '+(cadunico?'Competência '+cadPeriod+'.':'Na última consulta o serviço público não forneceu dados municipais válidos; valor indisponível não é zero.')));
+     'Agregado municipal MDS/MI Social do Cadastro Único. Faixas pobreza, extrema pobreza e total combinado são distintas; não confundir CadÚnico com toda a população de baixa renda. '+(cadunico?'Competência '+cadPeriod+'.':'A API não retornou dados municipais válidos nesta consulta; ausência não é zero.')));
   const pbfMds=mdsBenefits?.bolsa??null,bpcMds=mdsBenefits?.bpc??null;
   data.push(indicator('suas_pbf_familias_mds','Bolsa Família · famílias beneficiárias (MDS)',
    pbfMds?.beneficiaries??null,'famílias',pbfMds?.period??'—','mds_beneficios_misocial',
@@ -549,7 +551,7 @@ async function getDiagnosis(code) {
     {id:'frequencia_escolar',name:'Frequência escolar por faixa etária · Censo 2022',status:schoolFrequency?'verificado':'indisponivel',source:'ibge_frequencia_2022',reason:'Taxa de residentes que frequentavam escola ou creche por idade, 2022. Não confundir com matrículas em escolas locais.'},
     {id:'ideb',name:'IDEB 2025 · rede pública',status:(ideb.inicial!==null&&ideb.final!==null)?'verificado':(ideb.inicial!==null||ideb.final!==null)?'parcial':'indisponivel',source:'inep',reason:'Resultados oficiais do INEP de 2025. Algumas redes/municípios não possuem valor publicado.'},
     {id:'orcamento',name:'Execução orçamentária',status:groupOk(['orcamento_assistencia'])?'verificado':'indisponivel',source:'tesouro'},
-    {id:'cadunico',name:'Cadastro Único · agregados municipais',status:!cadunico?'indisponivel':(['families','people','lowerIncome','updated'].every(k=>Number.isFinite(cadunico[k]))?'verificado':'parcial'),source:'mds_cadunico',reason:!cadunico?'A API MDS MI Social não retornou registros municipais válidos nesta consulta. A ausência não equivale a zero.':'Consulta MDS MI Social disponível com competência própria; campos ausentes permanecem indisponíveis.'},
+    {id:'cadunico',name:'Cadastro Único · agregados municipais',status:!cadunico?'indisponivel':(['families','people','poverty','extremePovertyFamilies'].every(k=>Number.isFinite(cadunico[k]))?'verificado':'parcial'),source:'mds_cadunico',reason:!cadunico?'A API MDS MI Social não retornou registros municipais válidos nesta consulta. A ausência não equivale a zero.':'Famílias e pessoas por pobreza, extrema pobreza e renda per capita por competência da base; atualização cadastral permanece indisponível até identificação de coluna oficial.'},
     {id:'ivcad',name:'IVCAD · consulta por API pública',status:uf==='PE'?(ivcad?'verificado':'indisponivel'):'nao_integrado',source:uf==='PE'?'ivcad_pe':'ivcad_nacional',reason:uf==='PE'?(ivcad?'Consulta ao vivo à API pública Condepe-Fidem/MDS. Competência e sete índices conferidos, sem snapshot.':'API de PE não retornou sete dimensões consistentes. Não usar último número armazenado.'):'Painel nacional do MDS é público, mas não foi validada uma API aberta e estável para extração municipal automática. Não inventar IVCAD nem extrapolar Pernambuco.'},
     {id:'aprendizagem',name:'Potencial de aprendizagem profissional · MTE',status:learning?'verificado':'indisponivel',source:'mte',reason:learning?'Fonte MTE/SIT 07/2026, potencial de cota por setor; não são oportunidades abertas.':'O município não possui correspondência exata validada com a base MTE 07/2026.'},
     {id:'suas',name:'CRAS · Censo SUAS 2024',status:cras?'verificado':'indisponivel',source:'suas_municipal',reason:cras?'Relatório municipal MDS/SAGICAD de 2024, equipamentos por capacidade de referenciamento.':'Relatório municipal Censo SUAS 2024 não recuperado ou não validado; verificar no portal oficial.'},
