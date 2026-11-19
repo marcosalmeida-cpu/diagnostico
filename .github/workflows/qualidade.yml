@@ -62,3 +62,6 @@ jobs:
         if: github.ref == 'refs/heads/feat/v9-etapa3-educacao-juventude'
         continue-on-error: true
         run: node scripts/probe-ibge-pesquisas-educacao.js
+      - name: Validar educação em BH, SP e Ribeirão das Neves
+        if: github.ref == 'refs/heads/feat/v9-etapa3-educacao-juventude'
+        run: node scripts/validar-etapa3.js
