@@ -26,13 +26,10 @@ function populateCauseSelect(id) {
  const select=$(id);if(!select)return;
  select.replaceChildren(new Option('Todas as causas','todas'));
  for(const c of catalog.causes)select.add(new Option(c.name,c.id));
- select.add(new Option('Inclusão produtiva e transformação digital','trabalho'));
- select.add(new Option('Aprendizagem e inclusão digital','aprendizagem'));
 }
 function selectedList(all,id){
  const cause=$(id)?.value||'todas';
  if(cause==='todas')return all;
- if(cause==='trabalho')return all.filter(v=>v.causes.some(x=>['trabalho','digital','pobreza','egressos'].includes(x)));
  return all.filter(v=>v.causes.includes(cause));
 }
 function fundingCard(s){
@@ -64,8 +61,8 @@ function drawProjects(){
  const all=catalog.match(diagnostic,selectedList(catalog.projects,'projectCause'));
  const visible=projectsExpanded?all:all.slice(0,6);
  const host=$('projectCards');if(!host)return;host.replaceChildren(...visible.map(projectCard));
- const more=$('projectMore');more.hidden=all.length<=6;more.textContent=projectsExpanded?'Exibir menos':'Exibir todas as '+all.length+' propostas';
- $('projectsCaption').textContent=diagnostic?'Compatibilidade metodológica preliminar para '+diagnostic.municipio.nome+' / '+diagnostic.municipio.uf+'. Avaliar diagnóstico, parceiros e condições de execução.':'Referências institucionais e ideias claramente identificadas como propostas ainda não contratadas.';
+ const more=$('projectMore');more.hidden=all.length<=6;more.textContent=projectsExpanded?'Exibir menos':'Exibir todos os '+all.length+' projetos';
+ $('projectsCaption').textContent=diagnostic?'Compatibilidade metodológica preliminar para '+diagnostic.municipio.nome+' / '+diagnostic.municipio.uf+'. Avaliar diagnóstico, parceiros e condições de execução.':'Programas e metodologias da Rede Cidadã; presença no catálogo não confirma execução ou financiamento no município.';
 }
 function drawPrison(){
  const links=$('prisonSources');if(!links)return;
