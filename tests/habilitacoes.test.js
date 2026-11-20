@@ -2,7 +2,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {gzipSync}=require('node:zlib');
-const handler=require('../api/habilitacoes');
+const handler=require('../lib/habilitacoes');
 function invoke(q){
  let status=200,payload=null,headers={};
  const res={setHeader:(k,v)=>headers[k]=v,status(v){status=v;return this},json(v){payload=v;return this}};

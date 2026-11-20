@@ -28,7 +28,7 @@
   $('#registryMode').textContent='Consultando modalidade';
   cards.replaceChildren(txt('p','Consultando CMDCA, CMAS e CMDPI...','registry-empty'));
   try{
-   const res=await fetch('/api/habilitacoes?municipio='+encodeURIComponent(nome)+'&uf='+encodeURIComponent(uf),{signal:ctl.signal,cache:'no-store'});
+   const res=await fetch('/api/municipios?cadastros=1&municipio='+encodeURIComponent(nome)+'&uf='+encodeURIComponent(uf),{signal:ctl.signal,cache:'no-store'});
    const v=await res.json();if(!res.ok)throw Error(v.error||'A base institucional está indisponível.');
    if(ctl.signal.aborted||active!==code)return;
    $('#registryTerritory').textContent=nome+'/'+uf+' · consulta dos registros institucionais';

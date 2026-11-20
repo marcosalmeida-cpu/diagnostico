@@ -18,6 +18,7 @@ async function getAll() {
 const normal = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 module.exports = async function handler(req,res) {
   if(req.method !== 'GET')return res.status(405).json({error:'Método não permitido'});
+  if(req.query?.cadastros==='1')return require('../lib/habilitacoes')(req,res);
   const q=normal(req.query.q);
   if(q.length<2)return res.status(200).json({items:[],hint:'Digite pelo menos duas letras'});
   try {
