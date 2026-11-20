@@ -402,3 +402,17 @@ body{color:var(--ink);background:var(--bg)}
 .audit-caveat{padding-top:15px;border-top:1px solid #edf1f6;margin:17px 0 0}
 @media(max-width:800px){.audit-filters{grid-template-columns:1fr 1fr}.audit-filters label:first-child{grid-column:span 2}.audit-numbers{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.audit-workspace{padding:14px;border-radius:13px}.audit-top h3{font-size:18px}.audit-entry-summary{padding:11px 10px;gap:8px}.audit-entry-valuation{min-width:72px}.audit-field-grid{grid-template-columns:1fr}.audit-numbers strong{font-size:21px}.audit-filters{grid-template-columns:1fr}.audit-filters label:first-child{grid-column:auto}}
+
+/* Registros de conselhos da Rede Cidadã — após seleção municipal */
+.registry-box[hidden]{display:none}.registry-box{margin:18px 0 22px;padding:clamp(17px,2vw,26px);border:1px solid #dbe5f4;border-radius:18px;background:#fff;box-shadow:0 10px 28px #163b690b;min-width:0}
+.registry-heading{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:15px;margin-bottom:15px}.registry-heading>div{flex:1 1 270px;min-width:0}
+.registry-heading h2{font-size:clamp(18px,2vw,23px);color:#18376a;margin:7px 0}.registry-heading p{color:#647b99;font-size:12px;margin:0}
+.registry-heading>strong{background:#e9f2ff;color:#0c40a3;border:1px solid #d3e3fb;border-radius:999px;padding:9px 12px;font-size:11px;max-width:100%;overflow-wrap:anywhere}
+.registry-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}.registry-card{min-width:0;overflow-wrap:anywhere;background:#f9fbff;border:1px solid #e0eafa;border-radius:12px;padding:14px}
+.registry-card h3{font-size:12px;line-height:1.4;color:#335783;margin:0 0 10px}.registry-status{font-size:15px;color:#073985;display:block;margin-bottom:9px}
+.registry-row{display:flex;flex-direction:column;gap:3px;border-top:1px solid #e6edf8;padding-top:8px;margin-top:8px}.registry-row span{font-size:10px;color:#69809f}.registry-row strong{font-size:12px;color:#233e64;overflow-wrap:anywhere}
+.registry-note,.registry-warning{font-size:10px;line-height:1.55;margin:11px 0 0;color:#667f9f}.registry-warning{border:1px solid #f2d9ba;background:#fff5e9;color:#984c20;padding:8px;border-radius:8px}
+.registry-empty{grid-column:1/-1;border:1px dashed #dce6f4;border-radius:12px;padding:15px;font-size:12px;color:#627b9b;margin:0}.registry-disclaimer{font-size:11px;line-height:1.6;color:#657a95;margin:14px 0 0}
+.registry-footer{margin-top:12px;padding-top:12px;border-top:1px solid #e6edf6;display:flex;flex-wrap:wrap;gap:9px 16px;justify-content:space-between;align-items:center}.registry-footer span{font-size:10px;color:#7186a0;line-height:1.5}.registry-footer a{color:#0345b9;font-size:11px;font-weight:700;text-decoration:underline;overflow-wrap:anywhere}
+@media(max-width:1100px){.registry-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.registry-grid{grid-template-columns:1fr}.registry-box{padding:15px}}
